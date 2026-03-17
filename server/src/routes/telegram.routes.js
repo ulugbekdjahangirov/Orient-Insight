@@ -4683,7 +4683,7 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
             lines.push('\nHech narsa topilmadi.');
           } else {
             for (const c of stornoConfs) {
-              lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+              lines.push(`\n${ST[c.status] || '⏳'} ${c.booking?.bookingNumber || '#' + c.bookingId}`);
               if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
               if (c.restaurantName) lines.push(`🍴 ${c.restaurantName}`);
               if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
@@ -4764,7 +4764,12 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
             const confs = await prisma.mealConfirmation.findMany({
               where: confWhere,
               include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
-              orderBy: { sentAt: 'desc' }, take: 50
+              orderBy: { mealDate: 'asc' }, take: 50
+            });
+            confs.sort((a, b) => {
+              const an = a.booking?.bookingNumber || '';
+              const bn = b.booking?.bookingNumber || '';
+              return an.localeCompare(bn, undefined, { numeric: true });
             });
             lines.push(`📄 *Заявка ${restZayavkaYear}*`);
             if (!confs.length) {
@@ -4772,7 +4777,7 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
             } else {
               const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
               for (const c of confs) {
-                lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+                lines.push(`\n${ST[c.status] || '⏳'} ${c.booking?.bookingNumber || '#' + c.bookingId}`);
                 if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
                 if (c.pax) lines.push(`👥 ${c.pax} kishi`);
                 if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
@@ -4844,7 +4849,7 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
           lines.push('\nHech narsa topilmadi.');
         } else {
           for (const c of stornoConfs) {
-            lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#'+c.bookingId}*`);
+            lines.push(`\n${ST[c.status] || '⏳'} ${c.booking?.bookingNumber || '#'+c.bookingId}`);
             if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
             if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
             if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
@@ -4888,14 +4893,19 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
         const confs = await prisma.mealConfirmation.findMany({
           where,
           include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
-          orderBy: { sentAt: 'desc' }, take: 50
+          orderBy: { mealDate: 'asc' }, take: 50
+        });
+        confs.sort((a, b) => {
+          const an = a.booking?.bookingNumber || '';
+          const bn = b.booking?.bookingNumber || '';
+          return an.localeCompare(bn, undefined, { numeric: true });
         });
         if (!confs.length) {
           lines.push('\nHech narsa topilmadi.');
         } else {
           const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
           for (const c of confs) {
-            lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#'+c.bookingId}*`);
+            lines.push(`\n${ST[c.status] || '⏳'} ${c.booking?.bookingNumber || '#'+c.bookingId}`);
             if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
             if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
             if (c.pax) lines.push(`👥 ${c.pax} kishi`);
@@ -4979,6 +4989,11 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
         include: { booking: { select: { bookingNumber: true } } },
         orderBy: { mealDate: 'asc' }
       });
+      confs.sort((a, b) => {
+        const an = a.booking?.bookingNumber || '';
+        const bn = b.booking?.bookingNumber || '';
+        return an.localeCompare(bn, undefined, { numeric: true });
+      });
 
       const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
       const lines = [`📄 *${tourType} ${year} — ${restName}*`];
@@ -4986,7 +5001,7 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
         lines.push('\nHech narsa topilmadi.');
       } else {
         for (const c of confs) {
-          lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          lines.push(`\n${ST[c.status] || '⏳'} ${c.booking?.bookingNumber || '#' + c.bookingId}`);
           if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
           if (c.pax) lines.push(`👥 ${c.pax} kishi`);
           if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
@@ -5257,12 +5272,17 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
         const statusLine = isConfirm
           ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
           : `\n\n❌ ${fromName} tomonidan rad qilindi`;
-        await axios.post(`${RESTAURANT_API()}/editMessageText`, {
+        // First remove buttons
+        await axios.post(`${RESTAURANT_API()}/editMessageReplyMarkup`, {
           chat_id: fromChatId,
           message_id: cb.message.message_id,
-          text: (cb.message.text || '') + statusLine,
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({ inline_keyboard: [] })
+          reply_markup: { inline_keyboard: [] }
+        }).catch(() => {});
+        // Then send status as new message
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: fromChatId,
+          text: statusLine.trim(),
+          parse_mode: 'Markdown'
         }).catch(() => {});
       }
 
