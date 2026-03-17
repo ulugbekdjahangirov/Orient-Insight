@@ -4207,12 +4207,15 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
           booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
           booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
-          trApprovedBy         ? `👁 TEKSHIRDI: ${trApprovedBy}`                       : null,
-          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          trApprovedBy         ? `👁 TEKSHIRDI: ${mdSafe(trApprovedBy)}`                : null,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${mdSafe(fromName)}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
         for (const id of trAdminIds) {
-          await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' })
+            .catch(async () => {
+              await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+            });
         }
       }
       return;
@@ -5733,11 +5736,14 @@ router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
           mealDate ? `📅 Sana: *${mealDate}*` : null,
           pax      ? `👥 PAX: *${pax}* kishi` : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
-          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${mdSafe(fromName)}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
         for (const id of restAdminIds) {
-          await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+          await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' })
+            .catch(async () => {
+              await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+            });
         }
       }
       return;
