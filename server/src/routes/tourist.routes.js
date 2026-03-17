@@ -2533,6 +2533,37 @@ router.get('/:bookingId/railways', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/bookings/:bookingId/railways/sync-pax - Sync all railway PAX with current tourist count
+router.post('/:bookingId/railways/sync-pax', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const touristCount = await prisma.tourist.count({
+      where: { bookingId: parseInt(bookingId) }
+    });
+
+    const newPax = touristCount + 1; // +1 for guide
+
+    const railways = await prisma.railway.findMany({
+      where: { bookingId: parseInt(bookingId) }
+    });
+
+    const updates = await Promise.all(railways.map(async (railway) => {
+      const updateData = { pax: newPax };
+      if (railway.pax && railway.pax > 0 && railway.price) {
+        const pricePerPerson = railway.price / railway.pax;
+        updateData.price = pricePerPerson * newPax;
+      }
+      return prisma.railway.update({ where: { id: railway.id }, data: updateData });
+    }));
+
+    res.json({ success: true, updatedCount: updates.length, newPax });
+  } catch (error) {
+    console.error('Error syncing railway pax:', error);
+    res.status(500).json({ error: 'Error syncing railway pax' });
+  }
+});
+
 // POST /api/bookings/:bookingId/railways - Create a new railway
 router.post('/:bookingId/railways', authenticate, async (req, res) => {
   try {

@@ -515,13 +515,20 @@ export default function BookingDetail() {
   };
 
   // Wrapper functions for sub-tabs with URL parameter persistence
-  const setFlyRailwayTab = (tab) => {
+  const setFlyRailwayTab = async (tab) => {
     setFlyRailwayTabState(tab);
     if (!isNew && activeTab === 'rooming') {
       const params = new URLSearchParams(window.location.search);
       params.set('tab', 'rooming');
       params.set('subTab', tab);
       navigate(`?${params.toString()}`, { replace: true });
+    }
+    if (tab === 'railway' && id && railways.length > 0) {
+      try {
+        await railwaysApi.syncPax(id);
+        const railwaysRes = await railwaysApi.getAll(id);
+        setRailways(railwaysRes.data.railways || []);
+      } catch (e) {}
     }
   };
 
@@ -9313,7 +9320,7 @@ export default function BookingDetail() {
       {!isNew && activeTab === 'rooming-list' && (
         <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-indigo-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-          <RoomingListModule bookingId={parseInt(id)} onUpdate={loadData} />
+          <RoomingListModule bookingId={parseInt(id)} onUpdate={async () => { await railwaysApi.syncPax(id); loadData(); }} />
         </div>
       )}
 
@@ -18191,7 +18198,7 @@ License №T-0084-08 from 2021-04-26`;
                                                   <Edit className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button
-                                                  onClick={async () => { if (window.confirm(`Delete ${t.fullName || t.firstName + ' ' + t.lastName}?`)) { try { await touristsApi.delete(booking.id, t.id); toast.success('Tourist deleted'); loadData(); } catch (error) { console.error('Delete error:', error); toast.error('Error deleting tourist'); } } }}
+                                                  onClick={async () => { if (window.confirm(`Delete ${t.fullName || t.firstName + ' ' + t.lastName}?`)) { try { await touristsApi.delete(booking.id, t.id); await railwaysApi.syncPax(booking.id); toast.success('Tourist deleted'); loadData(); } catch (error) { console.error('Delete error:', error); toast.error('Error deleting tourist'); } } }}
                                                   className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                                   title="Delete"
                                                 >
@@ -18445,6 +18452,7 @@ License №T-0084-08 from 2021-04-26`;
                                                       if (window.confirm(`Delete ${t.fullName || t.firstName + ' ' + t.lastName}?`)) {
                                                         try {
                                                           await touristsApi.delete(booking.id, t.id);
+                                                          await railwaysApi.syncPax(booking.id);
                                                           toast.success('Tourist deleted');
                                                           loadData();
                                                         } catch (error) {

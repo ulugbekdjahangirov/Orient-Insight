@@ -167,6 +167,7 @@ export const railwaysApi = {
   create: (bookingId, data) => api.post(`/bookings/${bookingId}/railways`, data),
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/railways/${id}`, data),
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/railways/${id}`),
+  syncPax: (bookingId) => api.post(`/bookings/${bookingId}/railways/sync-pax`),
 };
 
 // API для гидов
