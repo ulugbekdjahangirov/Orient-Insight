@@ -276,29 +276,29 @@ async function sendTransportAdminMenu(chatId) {
 async function sendGuideMenu(chatId, isAdmin = false) {
   const curYear = new Date().getFullYear();
   let availYears = [curYear];
-  if (isAdmin) {
-    // Admin: show all booking years >= curYear from DB
-    const yearRows = await prisma.booking.findMany({
-      where: { bookingYear: { gte: curYear } },
-      select: { bookingYear: true },
-      distinct: ['bookingYear']
+  // Check if this chatId is also a guide (even if admin)
+  const guideRecord = await prisma.guide.findFirst({ where: { telegramChatId: String(chatId) } });
+  const isAdminOnly = isAdmin && !guideRecord;
+  if (isAdminOnly) {
+    // Pure admin (no guide record): collect years from all JP_GUIDE_YEARS_ keys
+    const allGuideYearKeys = await prisma.systemSetting.findMany({
+      where: { key: { startsWith: 'JP_GUIDE_YEARS_' } }, select: { value: true }
     });
-    const years = yearRows.map(r => r.bookingYear).sort();
-    if (years.length) availYears = years;
-  } else {
-    const guide = await prisma.guide.findFirst({ where: { telegramChatId: String(chatId) } });
-    if (guide) {
-      const s = await prisma.systemSetting.findUnique({ where: { key: `JP_GUIDE_YEARS_${guide.id}` } });
-      if (s) {
-        const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
-        if (years.length) availYears = years;
-      }
+    const adminYears = [...new Set(
+      allGuideYearKeys.flatMap(s => { try { return JSON.parse(s.value); } catch { return []; } })
+        .filter(y => y >= curYear)
+    )].sort();
+    if (adminYears.length) availYears = adminYears;
+  } else if (guideRecord) {
+    const s = await prisma.systemSetting.findUnique({ where: { key: `JP_GUIDE_YEARS_${guideRecord.id}` } });
+    if (s) {
+      const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
+      if (years.length) availYears = years;
     }
   }
   // If multiple years: single "📋 Gruppalar" button (year picker shown on press)
   // If single year: "📋 Gruppalar {year}" button (direct)
   const grpBtnText = availYears.length > 1 ? '📋 Gruppalar' : `📋 Gruppalar ${availYears[0]}`;
-  const grpRows = [[{ text: grpBtnText }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
     ? [[{ text: grpBtnText }], [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }], [{ text: '👤 Gidlar' }]]
     : [[{ text: grpBtnText }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]];
@@ -1312,15 +1312,17 @@ router.delete('/chats/:chatId', authenticate, requireAdmin, async (req, res) => 
     else if (userRole === 'transport') botApi = TRANSPORT_API();
     else if (userRole === 'guide') botApi = GUIDE_API();
 
+    // First remove all menus
     await axios.post(`${botApi}/sendMessage`, {
       chat_id: chatId,
-      text: `❌ *Sizning ruxsatingiz bekor qilindi.*\n\nQayta ro'yxatdan o'tish uchun quyidagi tugmani bosing.`,
-      parse_mode: 'Markdown',
-      reply_markup: JSON.stringify({
-        keyboard: [[{ text: '/start' }]],
-        resize_keyboard: true,
-        one_time_keyboard: true
-      })
+      text: `❌ Sizning ruxsatingiz bekor qilindi.`,
+      reply_markup: { remove_keyboard: true }
+    }).catch(() => {});
+    // Then show /start prompt
+    await axios.post(`${botApi}/sendMessage`, {
+      chat_id: chatId,
+      text: `Qayta ro'yxatdan o'tish uchun /start ni bosing.`,
+      reply_markup: { keyboard: [[{ text: '/start' }]], resize_keyboard: true, one_time_keyboard: true }
     }).catch(() => {});
 
     res.json({ success: true });
@@ -5420,17 +5422,20 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
           await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz tizimda gid sifatida ro\'yxatga olinmagan.' }).catch(() => {});
           return;
         }
+        // If user is both admin AND a guide — act as guide (show own bookings only)
+        const isAdminOnly = isAdmin && !guide;
 
         // If "📋 Gruppalar" pressed without a year → check available years
         if (isGruppalar && !grpYear) {
           let availYrs = [curYr];
-          if (isAdmin) {
-            const yearRows = await prisma.booking.findMany({
-              where: { bookingYear: { gte: curYr } },
-              select: { bookingYear: true },
-              distinct: ['bookingYear']
+          if (isAdminOnly) {
+            const allGuideYearKeys = await prisma.systemSetting.findMany({
+              where: { key: { startsWith: 'JP_GUIDE_YEARS_' } }, select: { value: true }
             });
-            const yrs = yearRows.map(r => r.bookingYear).sort();
+            const yrs = [...new Set(
+              allGuideYearKeys.flatMap(s => { try { return JSON.parse(s.value); } catch { return []; } })
+                .filter(y => y >= curYr)
+            )].sort();
             if (yrs.length) availYrs = yrs;
           } else if (guide) {
             const s = await prisma.systemSetting.findUnique({ where: { key: `JP_GUIDE_YEARS_${guide.id}` } });
@@ -5464,10 +5469,29 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
         let bookings = [];
         let headerText = '';
 
+        // For non-admin guides: show all sent bookings (both SCHEDULE and BOOKING sources)
+        let sentBookingIds = null;
+        if (!isAdminOnly && guide) {
+          const sentRows = await prisma.guideConfirmation.findMany({
+            where: { guideId: guide.id },
+            select: { bookingId: true },
+            distinct: ['bookingId']
+          });
+          sentBookingIds = sentRows.map(r => r.bookingId);
+        }
+
         if (isGruppalar) {
-          const where = isAdmin
+          if (!isAdminOnly && sentBookingIds !== null && sentBookingIds.length === 0) {
+            await axios.post(`${GUIDE_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `📋 <b>${guide.name}</b>\n📅 ${year} yil\n\n<i>Hali jadval yuborilmagan.</i>`,
+              parse_mode: 'HTML'
+            }).catch(() => {});
+            return;
+          }
+          const where = isAdminOnly
             ? { bookingYear: year, status: { not: 'CANCELLED' } }
-            : { guideId: guide.id, bookingYear: year, status: { not: 'CANCELLED' } };
+            : { id: { in: sentBookingIds }, bookingYear: year, status: { not: 'CANCELLED' } };
           bookings = await prisma.booking.findMany({
             where,
             select: {
@@ -5476,12 +5500,12 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
             },
             orderBy: { arrivalDate: 'asc' }
           });
-          headerText = isAdmin
+          headerText = isAdminOnly
             ? `📋 <b>Barcha gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`
             : `📋 <b>${guide.name}</b>\n📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`;
 
         } else if (msg.text === '✅ Tasdiqlangan') {
-          if (isAdmin) {
+          if (isAdminOnly) {
             // Admin: show ALL active guides as inline buttons
             const allGuides = await prisma.guide.findMany({
               where: { isActive: true },
@@ -5514,9 +5538,16 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
             }
             return;
           }
-          // Guide: show own confirmed bookings
+          // Guide: show bookings sent from Bookings section (source='BOOKING') regardless of booking status
+          const bookingSentRows = await prisma.guideConfirmation.findMany({
+            where: { guideId: guide.id, source: 'BOOKING' },
+            select: { bookingId: true },
+            distinct: ['bookingId']
+          });
+          const bookingSentIds = bookingSentRows.map(r => r.bookingId);
+          const confirmedWhere = { id: { in: bookingSentIds }, bookingYear: year };
           bookings = await prisma.booking.findMany({
-            where: { guideId: guide.id, bookingYear: year, status: { in: ['FINAL_CONFIRMED', 'COMPLETED'] } },
+            where: confirmedWhere,
             select: {
               bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true,
               guide: { select: { name: true } }
@@ -5526,7 +5557,7 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
           headerText = `✅ <b>Tasdiqlangan gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`;
 
         } else if (msg.text === '❌ Anulyatsiya') {
-          if (isAdmin) {
+          if (isAdminOnly) {
             const allGuidesRaw = await prisma.guide.findMany({
               where: { isActive: true },
               select: { id: true, name: true },
@@ -5549,9 +5580,12 @@ router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
             }).catch(() => {});
             return;
           }
-          // Guide: show own cancelled bookings
+          // Guide: show own cancelled bookings (only JP-sent ones)
+          const cancelledWhere = sentBookingIds !== null
+            ? { id: { in: sentBookingIds }, status: 'CANCELLED' }
+            : { guideId: guide.id, status: 'CANCELLED' };
           bookings = await prisma.booking.findMany({
-            where: { guideId: guide.id, status: 'CANCELLED' },
+            where: cancelledWhere,
             select: {
               bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true,
               guide: { select: { name: true } }
@@ -6469,11 +6503,11 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
           totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
         ].filter(Boolean).join('\n');
 
-    // Save/update GuideConfirmation
+    // Save/update GuideConfirmation (source: 'BOOKING' = sent from Bookings Tour Services tab)
     await prisma.guideConfirmation.upsert({
       where: { bookingId_guideId: { bookingId: parseInt(bookingId), guideId: guide.id } },
-      create: { bookingId: parseInt(bookingId), guideId: guide.id, status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date() },
-      update: { status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+      create: { bookingId: parseInt(bookingId), guideId: guide.id, status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date(), source: 'BOOKING' },
+      update: { status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null, source: 'BOOKING' }
     });
 
     const messagePayload = {
@@ -6893,20 +6927,20 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
     const fmtD  = d => { if (!d) return '—    '; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
     const fmtDY = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
 
-    const SEP = '─'.repeat(36);
+    const SEP = '─'.repeat(26);
     const rows = bookings.map((b, i) => {
       const num   = String(i + 1).padStart(2);
-      const grp   = (b.bookingNumber || '').padEnd(8);
+      const grp   = (b.bookingNumber || '').padEnd(7);
       const start = fmtD(b.arrivalDate).padEnd(6);
-      const end   = fmtDY(b.endDate);
-      return `<code>${num}. ${grp}  ${start} ── ${end}</code>`;
+      const end   = fmtD(b.endDate);
+      return `<code>${num}. ${grp} ${start}─ ${end}</code>`;
     });
 
     const lines = [
       `🧭 <b>${guide.name}</b>`,
       `📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`,
       ``,
-      `<code> #   Guruh     Boshlanish    Tugash</code>`,
+      `<code> #  Guruh    Kelish Tugash</code>`,
       `<code>${SEP}</code>`,
       ...rows,
       ``,
@@ -6925,12 +6959,12 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
       })
     });
 
-    // Mark all bookings as PENDING in GuideConfirmation
+    // Mark all bookings as PENDING in GuideConfirmation (source: 'SCHEDULE' = sent from JP)
     for (const b of bookings) {
       await prisma.guideConfirmation.upsert({
         where: { bookingId_guideId: { bookingId: b.id, guideId } },
-        create: { bookingId: b.id, guideId, status: 'PENDING', sentAt: new Date() },
-        update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+        create: { bookingId: b.id, guideId, status: 'PENDING', sentAt: new Date(), source: 'SCHEDULE' },
+        update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null, source: 'SCHEDULE' }
       });
     }
 

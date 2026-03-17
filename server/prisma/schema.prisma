@@ -1067,6 +1067,7 @@ model GuideConfirmation {
   sentAt      DateTime @default(now())
   respondedAt DateTime?
   createdAt   DateTime @default(now())
+  source      String?  // 'BOOKING' | 'SCHEDULE'
 
   @@unique([bookingId, guideId])
   @@index([bookingId])
