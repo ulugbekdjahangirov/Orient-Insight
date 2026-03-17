@@ -3001,6 +3001,7 @@ router.post('/webhook', (req, res, next) => {
 
     // ── Transport (marshrut varaqasi) callbacks ────────────────────────────
     if (data.startsWith('tr_confirm:') || data.startsWith('tr_reject:')) {
+      console.log('[WEBHOOK/tr_confirm] data:', data, '| from:', fromName);
       const parts = data.split(':');
       const trAction = parts[0]; // tr_confirm | tr_reject
       const trBookingId = parseInt(parts[1]);
@@ -4047,6 +4048,8 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
     const cb = update.callback_query;
     if (!cb) return;
 
+    console.log('[WEBHOOK-TRANSPORT] ANY callback received:', cb.data, '| from:', cb.from?.username || cb.from?.first_name, '| chat:', cb.message?.chat?.id);
+
     const callbackQueryId = cb.id;
     const data = cb.data || '';
     const fromUser = cb.from;
@@ -4156,6 +4159,7 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
 
     // ── tr_confirm / tr_reject (provider confirming marshrut) ────────────
     if (data.startsWith('tr_confirm:') || data.startsWith('tr_reject:')) {
+      console.log('[WEBHOOK-TRANSPORT/tr_confirm] data:', data, '| from:', fromName);
       const parts = data.split(':');
       const isConfirm  = data.startsWith('tr_confirm:');
       const trBookingId = parseInt(parts[1]);
@@ -4196,6 +4200,7 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
       } catch (e) { console.warn('TransportConfirmation update warn:', e.message); }
 
       const trAdminIds = await getBotAdminIds('transport');
+      console.log('[TR_CONFIRM] trAdminIds:', trAdminIds, '| bookingId:', trBookingId, '| provider:', trProvider, '| isConfirm:', isConfirm);
       if (trAdminIds.length) {
         const booking = await prisma.booking.findUnique({
           where: { id: trBookingId },
@@ -4215,9 +4220,14 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
         for (const id of trAdminIds) {
+          console.log('[TR_CONFIRM] Sending admin notify to:', id, 'via TRANSPORT_API');
           await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' })
-            .catch(async () => {
-              await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+            .then(() => console.log('[TR_CONFIRM] Admin notify OK:', id))
+            .catch(async (e) => {
+              console.warn('[TR_CONFIRM] Markdown fail, trying plain:', e.response?.data || e.message);
+              await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') })
+                .then(() => console.log('[TR_CONFIRM] Plain text OK:', id))
+                .catch(e2 => console.error('[TR_CONFIRM] Both failed:', e2.response?.data || e2.message));
             });
         }
       }
@@ -4956,12 +4966,33 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
         await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
 
         if (fromChatId && cb.message?.message_id) {
-          const resultLine = `\n\n${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`;
+          const resultLine = `\n\n${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${mdSafe(fromName)}*`;
           await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
             chat_id: fromChatId, message_id: cb.message.message_id,
             caption: (cb.message.caption || '') + resultLine,
             parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
           }).catch(() => {});
+        }
+
+        // Notify transport admin
+        const tpAdminIds = await getBotAdminIds('transport');
+        if (tpAdminIds.length) {
+          const emoji = isConfirm ? '✅' : '❌';
+          const providerLabel = PROVIDER_LABELS[tp26Provider] || tp26Provider;
+          const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000);
+          const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
+          const adminMsg = [
+            `${emoji} *Jahresplanung ${tp26Year} — ${tp26TourType}*`,
+            `🚌 Transport: *${providerLabel}*`,
+            `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${mdSafe(fromName)}`,
+            `🕐 ${timeStr}`
+          ].filter(Boolean).join('\n');
+          for (const id of tpAdminIds) {
+            await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' })
+              .catch(async () => {
+                await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+              });
+          }
         }
       }
       return;
