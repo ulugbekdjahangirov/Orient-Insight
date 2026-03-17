@@ -3083,7 +3083,10 @@ router.post('/webhook', (req, res, next) => {
         for (const id of trAdminIds) {
           await axios.post(`${TRANSPORT_API()}/sendMessage`, {
             chat_id: id, text: adminMsg, parse_mode: 'Markdown'
-          }).catch(e => console.warn('tr admin notify err:', e.response?.data || e.message));
+          }).catch(async (e) => {
+            console.warn('tr admin notify err:', e.response?.data || e.message);
+            await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+          });
         }
       }
 
