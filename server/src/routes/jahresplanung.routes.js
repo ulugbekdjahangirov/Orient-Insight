@@ -407,7 +407,8 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
         await axios.post(`${TG_API}/sendMessage`, { chat_id: hotel.telegramChatId, text: intro, parse_mode: 'Markdown' }).catch(() => {});
 
-        // 3. Individual visit messages (sequential, 100ms apart)
+        // 3. Individual visit messages (sequential, 300ms apart; pause 1s every 20 msgs)
+        let msgCount = 0;
         for (const grp of groups) {
           for (const v of grp.visits) {
             const visitTitle = v.sectionLabel
@@ -427,7 +428,9 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
               });
               v.msgId = msgRes.data?.result?.message_id || null;
             } catch (e) { console.warn(`JP visit send failed (${grp.group}):`, e.message); }
-            await new Promise(r => setTimeout(r, 100));
+            msgCount++;
+            // Pause 1s every 20 messages to avoid Telegram rate limit (429)
+            await new Promise(r => setTimeout(r, msgCount % 20 === 0 ? 1000 : 300));
           }
         }
 
@@ -805,7 +808,10 @@ let _pdfBrowser = null;
 async function getPdfBrowser() {
   if (!_pdfBrowser || !_pdfBrowser.connected) {
     _pdfBrowser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      headless: true,
+      userDataDir: '/tmp/puppeteer-chrome-jp',
+      env: { ...process.env, HOME: '/tmp/puppeteer-chrome-jp' },
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
     });
   }
   return _pdfBrowser;

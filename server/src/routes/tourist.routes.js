@@ -6644,6 +6644,7 @@ router.get('/:bookingId/hotel-request-pdf/:hotelId', authenticate, async (req, r
     const { bookingId, hotelId } = req.params;
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
+      env: { ...process.env, HOME: '/tmp' },
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
@@ -6702,6 +6703,7 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
     // Generate HTML by calling the combined route internally via puppeteer
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
+      env: { ...process.env, HOME: '/tmp' },
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
@@ -6943,6 +6945,7 @@ router.post('/:bookingId/send-storno-email/:hotelId', authenticate, async (req, 
     // Generate Storno PDF via puppeteer
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
+      env: { ...process.env, HOME: '/tmp' },
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();

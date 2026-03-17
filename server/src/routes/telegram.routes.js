@@ -2837,8 +2837,8 @@ router.post('/webhook', (req, res, next) => {
       }
 
       // Notify admin
-      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminChatId && mealConf) {
+      const restaurantAdminIds = await getBotAdminIds('restaurant');
+      if (restaurantAdminIds.length && mealConf) {
         const { booking, restaurantName, city, mealDate, pax } = mealConf;
         const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
         const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
@@ -2849,14 +2849,14 @@ router.post('/webhook', (req, res, next) => {
           mealDate   ? `📅 Sana: *${mealDate}*`  : null,
           pax        ? `👥 PAX: *${pax}* kishi`  : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
-          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${mdSafe(fromName)}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: adminChatId,
-          text: adminMsg,
-          parse_mode: 'Markdown'
-        }).catch(() => {});
+        for (const id of restaurantAdminIds) {
+          await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+            chat_id: id, text: adminMsg, parse_mode: 'Markdown'
+          }).catch(e => console.warn('meal admin notify err:', e.response?.data || e.message));
+        }
       }
 
       return;
@@ -2976,22 +2976,22 @@ router.post('/webhook', (req, res, next) => {
           }).catch(() => {});
         }
 
-        // Notify admin
-        const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-        if (adminChatId) {
+        // Notify transport admins
+        const trDeclineAdminIds = await getBotAdminIds('transport');
+        if (trDeclineAdminIds.length) {
           const booking = confirmation.booking;
           const adminMsg = [
             `❌ *${providerLabel}* uchun marshrut varaqasi rad etildi`,
             `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
             booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
             booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
-            `👤 RAD ETDI: ${fromName}`,
+            `👤 RAD ETDI: ${mdSafe(fromName)}`,
           ].filter(Boolean).join('\n');
-          await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: adminChatId,
-            text: adminMsg,
-            parse_mode: 'Markdown'
-          }).catch(() => {});
+          for (const id of trDeclineAdminIds) {
+            await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+              chat_id: id, text: adminMsg, parse_mode: 'Markdown'
+            }).catch(() => {});
+          }
         }
       }
 
@@ -3055,9 +3055,9 @@ router.post('/webhook', (req, res, next) => {
         console.warn('TransportConfirmation update warn:', e.message);
       }
 
-      // Notify admin
-      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminChatId) {
+      // Notify transport admins
+      const trAdminIds = await getBotAdminIds('transport');
+      if (trAdminIds.length) {
         const booking = await prisma.booking.findUnique({
           where: { id: trBookingId },
           select: {
@@ -3076,15 +3076,15 @@ router.post('/webhook', (req, res, next) => {
           booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
           booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
-          trApprovedBy         ? `👁 TEKSHIRDI: ${trApprovedBy}`                       : null,
-          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          trApprovedBy         ? `👁 TEKSHIRDI: ${mdSafe(trApprovedBy)}`                : null,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${mdSafe(fromName)}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: adminChatId,
-          text: adminMsg,
-          parse_mode: 'Markdown'
-        }).catch(() => {});
+        for (const id of trAdminIds) {
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+            chat_id: id, text: adminMsg, parse_mode: 'Markdown'
+          }).catch(e => console.warn('tr admin notify err:', e.response?.data || e.message));
+        }
       }
 
       return;
@@ -3454,8 +3454,8 @@ router.post('/webhook', (req, res, next) => {
       }
 
       // Admin notification
-      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminChatId) {
+      const jpAdminIds = await getBotAdminIds('hotel');
+      if (jpAdminIds.length) {
         const emoji = newStatus === 'CONFIRMED' ? '✅' : newStatus === 'WAITING' ? '⏳' : '❌';
         const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? "WL ga qo'shdi" : 'Rad etdi';
         const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
@@ -3469,7 +3469,7 @@ router.post('/webhook', (req, res, next) => {
             `🏨 ${hotelName}`,
             `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
             ``,
-            `👤 ${fromName}`,
+            `👤 ${mdSafe(fromName)}`,
             `🕐 ${timeStr}`
           ].join('\n');
         } else {
@@ -3487,15 +3487,15 @@ router.post('/webhook', (req, res, next) => {
             `👥 PAX: ${v?.pax || 0}`,
             `🛏 DBL:${v?.dbl || 0}  |  TWN:${v?.twn || 0}  |  SNGL:${v?.sngl || 0}`,
             ``,
-            `👤 ${fromName}`,
+            `👤 ${mdSafe(fromName)}`,
             `🕐 ${timeStr}`
           ].join('\n');
         }
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: adminChatId,
-          text: adminText,
-          parse_mode: 'Markdown'
-        }).catch(e => console.warn('JP admin notify error:', e.response?.data || e.message));
+        for (const id of jpAdminIds) {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: id, text: adminText, parse_mode: 'Markdown'
+          }).catch(e => console.warn('JP admin notify error:', e.response?.data || e.message));
+        }
       }
       return;
     }
@@ -3579,24 +3579,25 @@ router.post('/webhook', (req, res, next) => {
         });
       } catch (e) { console.warn('chg confirmation update:', e.message); }
 
-      // Notify admin
-      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminChatId) {
+      // Notify hotel admins
+      const chgAdminIds = await getBotAdminIds('hotel');
+      if (chgAdminIds.length) {
         const chgBooking = await prisma.booking.findUnique({ where: { id: chgBookingId } });
         const chgHotel   = await prisma.hotel.findUnique({ where: { id: chgHotelId } });
         const now = new Date();
         const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: adminChatId,
-          text: [
-            `${chgEmoji} *Izmeneniye — ЗАЯВКА ${chgBooking?.bookingNumber || chgBookingId}*`,
-            `🏨 ${chgHotel?.name || chgHotelId}`,
-            ``,
-            `👤 ${fromName}`,
-            `🕐 ${timeStr}`
-          ].join('\n'),
-          parse_mode: 'Markdown'
-        }).catch(() => {});
+        const chgAdminText = [
+          `${chgEmoji} *Izmeneniye — ЗАЯВКА ${chgBooking?.bookingNumber || chgBookingId}*`,
+          `🏨 ${chgHotel?.name || chgHotelId}`,
+          ``,
+          `👤 ${mdSafe(fromName)}`,
+          `🕐 ${timeStr}`
+        ].join('\n');
+        for (const id of chgAdminIds) {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: id, text: chgAdminText, parse_mode: 'Markdown'
+          }).catch(e => console.warn('chg admin notify err:', e.response?.data || e.message));
+        }
       }
       return;
     }
@@ -3634,29 +3635,31 @@ router.post('/webhook', (req, res, next) => {
         });
       } catch (e) { console.warn('ann confirmation update:', e.message); }
 
-      // Notify admin
-      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      if (adminChatId) {
+      // Notify hotel admins
+      const annAdminIds = await getBotAdminIds('hotel');
+      if (annAdminIds.length) {
         const annBooking = await prisma.booking.findUnique({ where: { id: annBookingId } });
         const annHotel   = await prisma.hotel.findUnique({ where: { id: annHotelId } });
         const now = new Date();
         const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: adminChatId,
-          text: [
-            `✅ *Anulyatsiya tasdiqlandi — ЗАЯВКА ${annBooking?.bookingNumber || annBookingId}*`,
-            `🏨 ${annHotel?.name || annHotelId}`,
-            ``,
-            `👤 ${fromName}`,
-            `🕐 ${timeStr}`
-          ].join('\n'),
-          parse_mode: 'Markdown'
-        }).catch(() => {});
+        const annAdminText = [
+          `✅ *Anulyatsiya tasdiqlandi — ЗАЯВКА ${annBooking?.bookingNumber || annBookingId}*`,
+          `🏨 ${annHotel?.name || annHotelId}`,
+          ``,
+          `👤 ${mdSafe(fromName)}`,
+          `🕐 ${timeStr}`
+        ].join('\n');
+        for (const id of annAdminIds) {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: id, text: annAdminText, parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
       }
       return;
     }
 
     const [action, bookingId, hotelId] = data.split(':');
+    console.log('Hotel confirm/reject handler:', { action, bookingId, hotelId, data });
     if (!action || !bookingId || !hotelId) return;
 
     // Fetch booking + hotel info
@@ -3738,11 +3741,16 @@ router.post('/webhook', (req, res, next) => {
         ``,
         ...dateLines,
         ``,
-        `👤 ${fromName}`,
+        `👤 ${mdSafe(fromName)}`,
         `🕐 ${timeStr}`
       ].join('\n');
       for (const id of hotelAdminIds) {
-        await axios.post(`${BOT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+        await axios.post(`${BOT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' })
+          .catch(async (e) => {
+            console.error('Hotel admin notify error:', e.response?.data || e.message);
+            // Fallback: send without markdown
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: id, text: adminMsg.replace(/[*_`]/g, '') }).catch(() => {});
+          });
       }
     }
 
@@ -4695,7 +4703,7 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
         <tbody>${hotelRowsHtml}</tbody></table>` : ''}
         </body></html>`;
 
-        const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        const browser = await puppeteer.launch({ env: { ...process.env, HOME: '/tmp' }, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
         await page.setContent(pdfHtml, { waitUntil: 'networkidle0' });
         const pdfBuffer = await page.pdf({ format: 'A4', margin: { top: '12mm', bottom: '12mm', left: '10mm', right: '10mm' } });
@@ -4912,9 +4920,9 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
         const booking = await prisma.booking.findUnique({ where: { id: stBookingId }, select: { bookingNumber: true } });
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: adminChatId,
-          text: `${isConfirm ? '✅' : '❌'} *АННУЛЯЦИЯ ${isConfirm ? 'tasdiqlandi' : 'rad etildi'}*\n📋 ${booking?.bookingNumber || '#'+stBookingId}\n🚗 ${PROVIDER_LABELS[stProvider] || stProvider}\n👤 ${fromName}`,
+          text: `${isConfirm ? '✅' : '❌'} *АННУЛЯЦИЯ ${isConfirm ? 'tasdiqlandi' : 'rad etildi'}*\n📋 ${booking?.bookingNumber || '#'+stBookingId}\n🚗 ${PROVIDER_LABELS[stProvider] || stProvider}\n👤 ${mdSafe(fromName)}`,
           parse_mode: 'Markdown'
-        }).catch(() => {});
+        }).catch(e => console.warn('st admin notify err:', e.response?.data || e.message));
       }
       return;
     }
@@ -6524,7 +6532,7 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
     if (!hotel?.telegramChatId) return res.status(400).json({ error: 'Hotel Telegram chat ID yo\'q' });
 
     // Generate Storno PDF via Puppeteer
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const browser = await puppeteer.launch({ env: { ...process.env, HOME: '/tmp' }, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/storno-combined/${hotelId}`;
     await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });

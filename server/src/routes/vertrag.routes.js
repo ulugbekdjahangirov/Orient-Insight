@@ -219,6 +219,7 @@ router.get('/pdf', authenticate, async (req, res) => {
   try {
     const puppeteer = require('puppeteer');
     browser = await puppeteer.launch({
+      env: { ...process.env, HOME: '/tmp' },
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
