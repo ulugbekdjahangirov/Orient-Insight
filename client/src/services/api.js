@@ -273,7 +273,7 @@ export const hotelsApi = {
   update: (id, data) => api.put(`/hotels/${id}`, data),
   delete: (id) => api.delete(`/hotels/${id}`),
   // Room Types
-  getRoomTypes: (hotelId) => api.get(`/hotels/${hotelId}/room-types`),
+  getRoomTypes: (hotelId, year) => api.get(`/hotels/${hotelId}/room-types${year ? `?year=${year}` : ''}`),
   createRoomType: (hotelId, data) => api.post(`/hotels/${hotelId}/room-types`, data),
   updateRoomType: (hotelId, id, data) => api.put(`/hotels/${hotelId}/room-types/${id}`, data),
   deleteRoomType: (hotelId, id) => api.delete(`/hotels/${hotelId}/room-types/${id}`),

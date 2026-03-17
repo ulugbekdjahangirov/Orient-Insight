@@ -146,9 +146,9 @@ export default function HotelAccommodationForm({
         })));
       }
 
-      // Load hotel room types for existing accommodation
+      // Load hotel room types for existing accommodation (and refresh prices from hotel)
       if (editingAccommodation.hotelId) {
-        loadHotelRoomTypes(editingAccommodation.hotelId);
+        loadHotelRoomTypes(editingAccommodation.hotelId, true);
       }
 
       // Load rooming list for this accommodation
@@ -158,15 +158,29 @@ export default function HotelAccommodationForm({
     }
   }, [editingAccommodation]);
 
-  // Load hotel room types when hotel changes
-  const loadHotelRoomTypes = async (hotelId) => {
+  // Load hotel room types when hotel changes (with year for yearly price override)
+  const loadHotelRoomTypes = async (hotelId, updateExistingPrices = false) => {
     if (!hotelId) {
       setSelectedHotelRoomTypes([]);
       return;
     }
     try {
-      const response = await hotelsApi.getRoomTypes(hotelId);
-      setSelectedHotelRoomTypes(response.data.roomTypes || []);
+      const year = booking?.bookingYear || new Date().getFullYear();
+      const response = await hotelsApi.getRoomTypes(hotelId, year);
+      const roomTypes = response.data.roomTypes || [];
+      setSelectedHotelRoomTypes(roomTypes);
+
+      if (updateExistingPrices) {
+        const hotel = hotels.find(h => h.id === parseInt(hotelId));
+        const hotelTotalRooms = hotel?.totalRooms || 0;
+        setRooms(prev => prev.map(room => {
+          const hotelRoomType = roomTypes.find(rt => rt.roomTypeCode === room.roomTypeCode);
+          if (hotelRoomType) {
+            return { ...room, pricePerNight: calculateTotalPrice(hotelRoomType, hotelTotalRooms) };
+          }
+          return room;
+        }));
+      }
     } catch (error) {
       console.error('Error loading hotel room types:', error);
       setSelectedHotelRoomTypes([]);

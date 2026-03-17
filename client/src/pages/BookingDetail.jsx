@@ -347,6 +347,31 @@ const PREDEFINED_RAILWAYS = [
   }
 ];
 
+// Helper: get effective room price from hotel's current data (yearly override → base → saved)
+function getEffectiveRoomPrice(room, acc) {
+  const year = new Date(acc.checkInDate || Date.now()).getFullYear();
+  const hotelRT = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
+  const yearlyP = hotelRT?.yearlyPrices?.find(yp => yp.year === year);
+  if (!hotelRT) return parseFloat(room.pricePerNight) || 0;
+  const basePrice = yearlyP?.pricePerNight ?? hotelRT.pricePerNight ?? 0;
+  const vatIncluded = yearlyP?.vatIncluded ?? hotelRT.vatIncluded ?? false;
+  const touristTaxEnabled = yearlyP?.touristTaxEnabled ?? hotelRT.touristTaxEnabled ?? false;
+  const brvValue = yearlyP?.brvValue ?? hotelRT.brvValue ?? 0;
+  const vatAmount = vatIncluded ? basePrice * 0.12 : 0;
+  let totalPrice = basePrice + vatAmount;
+  if (touristTaxEnabled && brvValue > 0) {
+    const totalRooms = acc.hotel?.totalRooms || 0;
+    const taxPct = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+    const guestsInRoom = hotelRT.maxGuests || 1;
+    const taxPerRoom = brvValue * taxPct * guestsInRoom;
+    const currency = hotelRT.currency || 'UZS';
+    totalPrice += currency === 'USD' ? taxPerRoom / UZS_PER_USD
+               : currency === 'EUR' ? taxPerRoom / UZS_PER_EUR
+               : taxPerRoom;
+  }
+  return totalPrice;
+}
+
 export default function BookingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -923,7 +948,7 @@ export default function BookingDetail() {
 
       // Calculate cost ONLY from rooming list data (ignore saved rooms if no guests)
       acc.rooms.forEach(room => {
-        const pricePerNight = parseFloat(room.pricePerNight) || 0;
+        const pricePerNight = getEffectiveRoomPrice(room, acc);
         let normalizedRoomType = room.roomTypeCode?.toUpperCase();
         if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
         if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
@@ -17275,11 +17300,8 @@ License №T-0084-08 from 2021-04-26`;
                                   });
 
                                   // Populate breakdown from saved rooms data
-                                  const _accYear2 = new Date(acc.checkInDate || Date.now()).getFullYear();
                                   acc.rooms?.forEach(room => {
-                                    const _ht2 = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
-                                    const _yp2 = _ht2?.yearlyPrices?.find(yp => yp.year === _accYear2);
-                                    const pricePerNight = parseFloat(room.pricePerNight) || _yp2?.pricePerNight || _ht2?.pricePerNight || 0;
+                                    const pricePerNight = getEffectiveRoomPrice(room, acc);
                                     let normalizedRoomType = room.roomTypeCode?.toUpperCase();
                                     if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
                                     if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';

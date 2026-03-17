@@ -293,11 +293,12 @@ router.delete('/:id', authenticate, async (req, res) => {
 // ROOM TYPES
 // ============================================
 
-// GET /api/hotels/:hotelId/room-types - Get room types for hotel
+// GET /api/hotels/:hotelId/room-types - Get room types for hotel (with optional year for yearly price)
 router.get('/:hotelId/room-types', authenticate, async (req, res) => {
   try {
     const { hotelId } = req.params;
-    const { includeInactive } = req.query;
+    const { includeInactive, year } = req.query;
+    const selectedYear = year ? parseInt(year) : null;
 
     const where = { hotelId: parseInt(hotelId) };
     if (includeInactive !== 'true') {
@@ -306,7 +307,22 @@ router.get('/:hotelId/room-types', authenticate, async (req, res) => {
 
     const roomTypes = await prisma.roomType.findMany({
       where,
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
+      include: {
+        yearlyPrices: selectedYear ? { where: { year: selectedYear } } : false
+      }
+    });
+
+    // Merge yearly price override into roomType
+    roomTypes.forEach(rt => {
+      const yp = rt.yearlyPrices && rt.yearlyPrices[0];
+      if (yp) {
+        rt.pricePerNight = yp.pricePerNight ?? rt.pricePerNight;
+        rt.vatIncluded = yp.vatIncluded ?? rt.vatIncluded;
+        rt.touristTaxEnabled = yp.touristTaxEnabled ?? rt.touristTaxEnabled;
+        rt.brvValue = yp.brvValue ?? rt.brvValue;
+      }
+      delete rt.yearlyPrices;
     });
 
     res.json({ roomTypes });
