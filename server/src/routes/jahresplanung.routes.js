@@ -804,7 +804,6 @@ router.delete('/transport-confirmations/:key', authenticate, async (req, res) =>
 
 // ── Persistent Puppeteer browser (reused across requests — saves 2-4s per PDF)
 const puppeteer = require('puppeteer');
-const fs = require('fs');
 let _pdfBrowser = null;
 async function getPdfBrowser() {
   if (!_pdfBrowser || !_pdfBrowser.connected) {

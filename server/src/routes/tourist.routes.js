@@ -6754,7 +6754,6 @@ async function getPuppeteerBrowser() {
   }
   if (!_puppeteerBrowser) {
     const puppeteer = require('puppeteer');
-    const fs = require('fs');
     // Remove stale SingletonLock left by crashed Chrome (prevents launch failure after PM2 restart)
     try { fs.unlinkSync('/tmp/puppeteer-chrome-orient/SingletonLock'); } catch (_) {}
     _puppeteerBrowser = await puppeteer.launch({
