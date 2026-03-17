@@ -317,14 +317,11 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
 });
 
 // POST /api/jahresplanung/send-hotel-telegram/:hotelId
-// Accepts FormData: pdf (file) + year + tourType + sections (JSON string)
-router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'), async (req, res) => {
+// Accepts JSON: { year, tourType, sections }
+router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
-    const { year, tourType } = req.body;
-    let sections = [];
-    try { sections = JSON.parse(req.body.sections || '[]'); } catch { sections = []; }
-    const pdfBuffer = req.file?.buffer;
+    const { year, tourType, sections = [] } = req.body;
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: hotelId },
@@ -391,26 +388,29 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         const TG_API = TG_BASE;
         const header = `📋 *Заявка ${year} — ${tourLabel}*`;
 
-        // 1. PDF document
-        if (pdfBuffer) {
+        // 1. Generate PDF server-side and send
+        try {
+          const pdfBuf = await generatePdfBuffer(hotel.name, tourType, year, sections);
           const docForm = new FormData();
           docForm.append('chat_id', hotel.telegramChatId);
-          docForm.append('document', pdfBuffer, {
+          docForm.append('document', pdfBuf, {
             filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
             contentType: 'application/pdf'
           });
           docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
-          await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() }).catch(e => console.warn('JP PDF send error:', e.message));
-        }
+          await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+        } catch (e) { console.warn('JP PDF send error:', e.message); }
 
         // 2. Intro message
         const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
         await axios.post(`${TG_API}/sendMessage`, { chat_id: hotel.telegramChatId, text: intro, parse_mode: 'Markdown' }).catch(() => {});
 
-        // 3. Individual visit messages (sequential, 300ms apart; pause 1s every 20 msgs)
-        let msgCount = 0;
-        for (const grp of groups) {
-          for (const v of grp.visits) {
+        // 3. Individual visit messages — parallel batches of 5, 500ms between batches
+        const allVisits = groups.flatMap(grp => grp.visits.map(v => ({ grp, v })));
+        const BATCH = 5;
+        for (let i = 0; i < allVisits.length; i += BATCH) {
+          const batch = allVisits.slice(i, i + BATCH);
+          await Promise.allSettled(batch.map(async ({ grp, v }) => {
             const visitTitle = v.sectionLabel
               ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
               : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
@@ -428,10 +428,8 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
               });
               v.msgId = msgRes.data?.result?.message_id || null;
             } catch (e) { console.warn(`JP visit send failed (${grp.group}):`, e.message); }
-            msgCount++;
-            // Pause 1s every 20 messages to avoid Telegram rate limit (429)
-            await new Promise(r => setTimeout(r, msgCount % 20 === 0 ? 1000 : 300));
-          }
+          }));
+          if (i + BATCH < allVisits.length) await new Promise(r => setTimeout(r, 500));
         }
 
         // 4. Bulk message

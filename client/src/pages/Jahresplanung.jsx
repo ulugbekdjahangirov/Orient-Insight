@@ -2768,10 +2768,8 @@ function HotelsTab({ tourType, tourColor }) {
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
       const effectiveHotelDefault = hotelDefaults[hotel.id] || TOUR_TYPE_DEFAULTS[tourType];
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR, effectiveHotelDefault);
       const payload = buildPdfPayload(hotelData, tourType, overrides, YEAR, effectiveHotelDefault);
-      const filename = `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
-      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, filename, YEAR, tourType, payload.sections);
+      await jahresplanungApi.sendHotelTelegram(hotel.id, YEAR, tourType, payload.sections);
       toast.success(`Telegram → ${hotel.name}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
