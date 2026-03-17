@@ -804,9 +804,12 @@ router.delete('/transport-confirmations/:key', authenticate, async (req, res) =>
 
 // ── Persistent Puppeteer browser (reused across requests — saves 2-4s per PDF)
 const puppeteer = require('puppeteer');
+const fs = require('fs');
 let _pdfBrowser = null;
 async function getPdfBrowser() {
   if (!_pdfBrowser || !_pdfBrowser.connected) {
+    // Remove stale SingletonLock left by crashed Chrome (prevents launch failure after PM2 restart)
+    try { fs.unlinkSync('/tmp/puppeteer-chrome-jp/SingletonLock'); } catch (_) {}
     _pdfBrowser = await puppeteer.launch({
       headless: true,
       userDataDir: '/tmp/puppeteer-chrome-jp',
