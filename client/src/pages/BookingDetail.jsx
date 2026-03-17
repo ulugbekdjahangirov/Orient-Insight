@@ -7626,9 +7626,10 @@ export default function BookingDetail() {
         || parseInt(formData.paxUzbekistan) || parseInt(booking?.paxUzbekistan) || 0;
       let paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length
         || parseInt(formData.paxTurkmenistan) || parseInt(booking?.paxTurkmenistan) || 0;
-      // totalPax = booking.pax (e.g. 16), NOT paxUzb+paxTkm (which can exceed real total
-      // if paxUzbekistan was entered equal to full group size)
-      const totalPax = parseInt(booking?.pax) || parseInt(formData.pax) || (paxUzb + paxTkm);
+      // Use actual tourist count when tourists are loaded (not booking.pax which may be stale)
+      const totalPax = tourists.length > 0
+        ? (paxUzb + paxTkm)
+        : (parseInt(booking?.pax) || parseInt(formData.pax) || (paxUzb + paxTkm));
 
       // Auto-correct: if paxUzb+paxTkm > totalPax, operator entered paxUzb as full group size
       // Fix: paxUzb = totalPax - paxTkm
