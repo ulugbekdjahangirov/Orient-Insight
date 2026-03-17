@@ -6753,7 +6753,10 @@ async function getPuppeteerBrowser() {
   if (!_puppeteerBrowser) {
     const puppeteer = require('puppeteer');
     _puppeteerBrowser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      headless: true,
+      userDataDir: '/tmp/puppeteer-chrome-orient',
+      env: { ...process.env, HOME: '/tmp/puppeteer-chrome-orient' },
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
     });
   }
   return _puppeteerBrowser;
@@ -6886,6 +6889,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
         data: {
           bookingId: parseInt(bookingId),
           hotelId: parseInt(hotelId),
+          type: isTgIzmenenie ? 'CHANGE' : 'BOOKING',
           status: 'PENDING',
           sentAt: new Date()
         }

@@ -215,9 +215,9 @@ async function runAllReminders(fakeToday) {
 
   for (const days of [1, 3]) {
     await sendHotelReminders(today, days);
-    await sendGuideReminders(today, days);
-    await sendRestaurantReminders(today, days);
   }
+  await sendGuideReminders(today, 1);
+  await sendRestaurantReminders(today, 1);
   await sendTransportReminders(today, 1);
 }
 
