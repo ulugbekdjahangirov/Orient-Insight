@@ -1102,6 +1102,8 @@ class EmailImportProcessor {
       _debugLog(`🔍 _extractCancelledNames: ${doc.numPages} page(s)`);
 
       const cancelledFragments = new Set();
+      // Color-based fragments collected separately — validated before merging into cancelledFragments
+      const colorFragments = new Set();
       const OPS = pdfjsLib.OPS;
       _debugLog(`🔍 OPS.setFillRGBColor=${OPS.setFillRGBColor} setFillGray=${OPS.setFillGray} showText=${OPS.showText}`);
 
@@ -1157,6 +1159,7 @@ class EmailImportProcessor {
         }
 
         // For each text item, check if its Y matches a red text op Y
+        // Results go to colorFragments (validated separately before merging)
         for (const item of items) {
           const iy = item.transform[5];
           const iyKey = Math.round(iy * 10);
@@ -1165,7 +1168,7 @@ class EmailImportProcessor {
           if (isRed) {
             const str = (item.str || '').trim();
             if (str.length >= 3) {
-              cancelledFragments.add(str.toLowerCase());
+              colorFragments.add(str.toLowerCase());
               _debugLog(`📄 Red text by Y-pos (p${pageNum} y=${iy.toFixed(1)}): "${str}"`);
             }
           }
@@ -1246,6 +1249,23 @@ class EmailImportProcessor {
             }
           }
         }
+      }
+
+      // Sanity check for color-based detection:
+      // Some PDFs use red/colored text for formatting (summary lines, section headers, special notes)
+      // rather than actual cancellation. If summary-line words are detected as colored text,
+      // skip color-based fragments entirely (strikethrough detection is still reliable).
+      const NON_NAME_INDICATORS = [
+        'total', 'uzbekistan', 'turkmenistan', 'kazakhstan', 'kyrgyzstan',
+        'pax in', 'double room', 'twin room', 'single room',
+        'double rooms', 'twin rooms', 'single rooms',
+      ];
+      const colorUnreliable = NON_NAME_INDICATORS.some(w => colorFragments.has(w));
+      if (colorUnreliable) {
+        _debugLog(`🔍 Color-based detection unreliable (summary words detected as colored text) → skipping ${colorFragments.size} color fragment(s)`);
+      } else if (colorFragments.size > 0) {
+        for (const f of colorFragments) cancelledFragments.add(f);
+        _debugLog(`🔍 Color-based fragments merged: ${colorFragments.size}`);
       }
 
       _debugLog(`🔍 _extractCancelledNames done: ${cancelledFragments.size} cancelled fragment(s): [${[...cancelledFragments].join(', ')}]`);
