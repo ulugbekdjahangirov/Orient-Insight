@@ -16517,6 +16517,9 @@ License №T-0084-08 from 2021-04-26`;
               Dates
             </h2>
 
+            {(() => {
+            const datesTC = booking?.tourType?.code || tourTypes.find(t => t.id === parseInt(formData.tourTypeId))?.code;
+            return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -16536,9 +16539,9 @@ License №T-0084-08 from 2021-04-26`;
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Arrival
                   <span className="ml-1 text-xs font-normal text-gray-500">
-                    {booking?.tourType?.code === 'ZA'
+                    {datesTC === 'ZA'
                       ? '(auto: Tour Start + 4 days)'
-                      : booking?.tourType?.code === 'KAS'
+                      : datesTC === 'KAS'
                         ? '(auto: Tour Start + 14 days)'
                         : '(auto: Tour Start + 1 day)'}
                   </span>
@@ -16555,7 +16558,7 @@ License №T-0084-08 from 2021-04-26`;
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  {booking?.tourType?.code === 'ZA' ? 'Jartepa' : 'Tour End'}
+                  {datesTC === 'ZA' ? 'Jartepa' : 'Tour End'}
                 </label>
                 <input
                   type="date"
@@ -16567,7 +16570,7 @@ License №T-0084-08 from 2021-04-26`;
                 />
               </div>
 
-              {booking?.tourType?.code === 'ZA' && formData.endDate && (
+              {datesTC === 'ZA' && formData.endDate && (
                 <>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -16596,6 +16599,8 @@ License №T-0084-08 from 2021-04-26`;
                 </>
               )}
             </div>
+            );
+            })()}
           </div>
           )}
 
