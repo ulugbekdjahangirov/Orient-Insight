@@ -16883,72 +16883,38 @@ License №T-0084-08 from 2021-04-26`;
                       )}
                     </div>
 
-                    {/* Desktop: large cards */}
-                    <div className="hidden md:flex md:items-stretch gap-4 flex-wrap mb-8">
-                      <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                          <Users className="w-8 h-8 text-primary-600" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Total</div>
-                          <div className="text-4xl font-black text-gray-900">{totalGuests}</div>
-                          <div className="text-sm text-gray-600 font-medium">guests</div>
-                        </div>
+                    {/* Desktop: stat cards */}
+                    <div className="hidden md:flex md:items-center gap-3 flex-wrap mb-6">
+                      <div className="flex flex-col items-center justify-center w-[88px] h-[88px] bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                        <Users className="w-5 h-5 text-primary-500 mb-1" />
+                        <div className="text-2xl font-black text-gray-900 leading-none">{totalGuests}</div>
+                        <div className="text-xs text-primary-600 font-semibold uppercase mt-1">Total</div>
                       </div>
                       {roomCounts.DBL > 0 && (
-                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                            <Bed className="w-8 h-8 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">DBL</div>
-                            <div className="text-4xl font-black text-gray-900">{roomCounts.DBL}</div>
-                            <div className="text-sm text-gray-600 font-medium">rooms</div>
-                          </div>
+                        <div className="flex flex-col items-center justify-center w-[88px] h-[88px] bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase mb-1">DBL</span>
+                          <div className="text-2xl font-black text-gray-900 leading-none">{roomCounts.DBL}</div>
+                          <div className="text-xs text-gray-500 font-medium mt-1">rooms</div>
                         </div>
                       )}
                       {roomCounts.TWN > 0 && (
-                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                            <Bed className="w-8 h-8 text-emerald-600" />
-                          </div>
-                          <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">TWN</div>
-                            <div className="text-4xl font-black text-gray-900">{roomCounts.TWN}</div>
-                            <div className="text-sm text-gray-600 font-medium">rooms</div>
-                          </div>
+                        <div className="flex flex-col items-center justify-center w-[88px] h-[88px] bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase mb-1">TWN</span>
+                          <div className="text-2xl font-black text-gray-900 leading-none">{roomCounts.TWN}</div>
+                          <div className="text-xs text-gray-500 font-medium mt-1">rooms</div>
                         </div>
                       )}
                       {roomCounts.SNGL > 0 && (
-                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                            <User className="w-8 h-8 text-violet-600" />
-                          </div>
-                          <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">SNGL</div>
-                            <div className="text-4xl font-black text-gray-900">{roomCounts.SNGL}</div>
-                            <div className="text-sm text-gray-600 font-medium">rooms</div>
-                          </div>
+                        <div className="flex flex-col items-center justify-center w-[88px] h-[88px] bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase mb-1">SNGL</span>
+                          <div className="text-2xl font-black text-gray-900 leading-none">{roomCounts.SNGL}</div>
+                          <div className="text-xs text-gray-500 font-medium mt-1">rooms</div>
                         </div>
                       )}
                       {uzbekCount > 0 && turkmCount > 0 && (
-                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl shadow-md">
-                          <div className="flex flex-col gap-2 w-full">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
-                              </div>
-                              <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
-                              </div>
-                              <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
-                            </div>
-                          </div>
+                        <div className="flex flex-col items-center justify-center w-[88px] h-[88px] bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl shadow-sm gap-2">
+                          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-xs font-bold text-gray-600">UZB</span><span className="text-base font-black text-gray-900">{uzbekCount}</span></div>
+                          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500" /><span className="text-xs font-bold text-gray-600">TKM</span><span className="text-base font-black text-gray-900">{turkmCount}</span></div>
                         </div>
                       )}
                     </div>

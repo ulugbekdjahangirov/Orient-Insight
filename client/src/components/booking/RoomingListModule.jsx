@@ -1761,72 +1761,54 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       ) : (
         /* ===== DESKTOP HEADER ===== */
         <div className="flex flex-row items-center justify-between bg-gradient-to-r from-primary-50 to-white p-4 rounded-xl border border-primary-100 gap-3">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary-100 rounded-xl">
-              <Users className="w-6 h-6 text-primary-600" />
+          <div className="flex items-center gap-3 flex-nowrap">
+            {/* Total */}
+            <div className="flex flex-col items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl">
+              <Users className="w-5 h-5 text-primary-500 mb-1" />
+              <div className="text-xl font-bold text-gray-900 leading-none">{filteredTourists.length}</div>
+              <div className="text-xs text-primary-600 font-semibold uppercase mt-0.5">Total</div>
             </div>
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Rooming List</h3>
-              <div className="flex items-stretch gap-4 flex-wrap">
-                {/* Total */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm">
-                    <Users className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
-                    <div className="text-2xl font-bold text-gray-900">{filteredTourists.length}</div>
-                    <div className="text-xs text-gray-600">{filteredTourists.length === 1 ? 'guest' : 'guests'}</div>
-                  </div>
+            {/* Room Type Breakdown Cards */}
+            {(() => {
+              const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+              const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+              const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
+              filteredTourists.forEach(t => {
+                const roomType = (t.roomPreference || '').toUpperCase();
+                const roomNum = t.roomNumber;
+                if (roomType === 'DBL' || roomType === 'DOUBLE') { if (roomNum && !seenRooms.DBL.has(roomNum)) { roomCounts.DBL++; seenRooms.DBL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.DBL++; } }
+                else if (roomType === 'TWN' || roomType === 'TWIN') { if (roomNum && !seenRooms.TWN.has(roomNum)) { roomCounts.TWN++; seenRooms.TWN.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.TWN++; } }
+                else if (roomType === 'SNGL' || roomType === 'SINGLE') { if (roomNum && !seenRooms.SNGL.has(roomNum)) { roomCounts.SNGL++; seenRooms.SNGL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.SNGL++; } }
+              });
+              roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+              roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+              roomCounts.SNGL += touristsWithoutRoom.SNGL;
+              return [
+                { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500' },
+                { key: 'TWN', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', badge: 'bg-emerald-500' },
+                { key: 'SNGL', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', badge: 'bg-violet-500' },
+              ].filter(r => r.count > 0).map(room => (
+                <div key={room.key} className={`flex flex-col items-center justify-center w-20 h-20 bg-gradient-to-br ${room.gradient} border ${room.border} rounded-xl`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase mb-1`}>{room.key}</span>
+                  <div className="text-xl font-bold text-gray-900 leading-none">{room.count}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{room.count === 1 ? 'room' : 'rooms'}</div>
                 </div>
-                {/* Room Type Breakdown Cards */}
-                {(() => {
-                  const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
-                  const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
-                  const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
-                  filteredTourists.forEach(t => {
-                    const roomType = (t.roomPreference || '').toUpperCase();
-                    const roomNum = t.roomNumber;
-                    if (roomType === 'DBL' || roomType === 'DOUBLE') { if (roomNum && !seenRooms.DBL.has(roomNum)) { roomCounts.DBL++; seenRooms.DBL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.DBL++; } }
-                    else if (roomType === 'TWN' || roomType === 'TWIN') { if (roomNum && !seenRooms.TWN.has(roomNum)) { roomCounts.TWN++; seenRooms.TWN.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.TWN++; } }
-                    else if (roomType === 'SNGL' || roomType === 'SINGLE') { if (roomNum && !seenRooms.SNGL.has(roomNum)) { roomCounts.SNGL++; seenRooms.SNGL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.SNGL++; } }
-                  });
-                  roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
-                  roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
-                  roomCounts.SNGL += touristsWithoutRoom.SNGL;
-                  return [
-                    { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500', icon: '👫' },
-                    { key: 'TWN', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', badge: 'bg-emerald-500', icon: '🛏️' },
-                    { key: 'SNGL', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', badge: 'bg-violet-500', icon: '👤' },
-                  ].filter(r => r.count > 0).map(room => (
-                    <div key={room.key} className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-br ${room.gradient} border-2 ${room.border} rounded-xl shadow-sm`}>
-                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm"><span className="text-2xl">{room.icon}</span></div>
-                      <div>
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase mb-1`}>{room.key}</div>
-                        <div className="text-2xl font-bold text-gray-900">{room.count}</div>
-                        <div className="text-xs text-gray-600">{room.count === 1 ? 'room' : 'rooms'}</div>
-                      </div>
-                    </div>
-                  ));
-                })()}
-                {/* UZB/TKM */}
-                {uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0 && (
-                  <div className="flex items-center gap-4 px-4 py-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-xs font-medium text-gray-600 uppercase">UZB</span><span className="text-lg font-bold text-gray-900">{uzbekistanTourists.length}</span></div>
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500" /><span className="text-xs font-medium text-gray-600 uppercase">TKM</span><span className="text-lg font-bold text-gray-900">{turkmenistanTourists.length}</span></div>
-                    </div>
-                  </div>
-                )}
+              ));
+            })()}
+            {/* UZB/TKM */}
+            {uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0 && (
+              <div className="flex flex-col items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl gap-1">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-xs font-semibold text-gray-600">UZB</span><span className="text-sm font-bold text-gray-900">{uzbekistanTourists.length}</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500" /><span className="text-xs font-semibold text-gray-600">TKM</span><span className="text-sm font-bold text-gray-900">{turkmenistanTourists.length}</span></div>
               </div>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={openAddTouristModal} className="inline-flex items-center gap-2.5 px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 text-base font-semibold shadow-lg transition-all"><Plus className="w-5 h-5" />Add</button>
+          <div className="flex items-center gap-2">
+            <button onClick={openAddTouristModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm font-semibold shadow-sm transition-all"><Plus className="w-4 h-4" />Add</button>
             {tourists.length > 0 && (
               <div className="relative">
-                <button onClick={() => setBulkRemarkOpen(!bulkRemarkOpen)} className="inline-flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-lg transition-all" title="Barcha turistlarga remark qo'shish">
-                  <Edit className="w-4 h-4" />Bulk
+                <button onClick={() => setBulkRemarkOpen(!bulkRemarkOpen)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold shadow-sm transition-all" title="Barcha turistlarga remark qo'shish">
+                  <Edit className="w-3.5 h-3.5" />Bulk
                 </button>
                 {bulkRemarkOpen && (
                   <><div className="fixed inset-0 z-10" onClick={() => setBulkRemarkOpen(false)} />
@@ -1867,8 +1849,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             )}
             {tourists.length > 0 && (
               <div className="relative">
-                <button onClick={() => setExportMenuOpen(!exportMenuOpen)} className="inline-flex items-center gap-2.5 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-base font-semibold text-gray-700 shadow-sm transition-all">
-                  <Download className="w-5 h-5 text-gray-500" />Export<ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+                <button onClick={() => setExportMenuOpen(!exportMenuOpen)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-semibold text-gray-700 shadow-sm transition-all">
+                  <Download className="w-4 h-4 text-gray-500" />Export<ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {exportMenuOpen && (
                   <><div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
@@ -1879,12 +1861,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 )}
               </div>
             )}
-            <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl cursor-pointer text-base font-semibold shadow-lg shadow-primary-200 transition-all">
-              <Upload className="w-5 h-5" />{importing ? 'Importing...' : 'Import PDF'}
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg cursor-pointer text-sm font-semibold shadow-sm transition-all">
+              <Upload className="w-4 h-4" />{importing ? 'Importing...' : 'Import PDF'}
               <input type="file" accept=".pdf" onChange={handlePdfImport} className="hidden" disabled={importing} />
             </label>
-            <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl cursor-pointer text-base font-semibold shadow-lg shadow-blue-200 transition-all">
-              <FileText className="w-5 h-5" />{importing ? 'Importing...' : 'Import Word'}
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg cursor-pointer text-sm font-semibold shadow-sm transition-all">
+              <FileText className="w-4 h-4" />{importing ? 'Importing...' : 'Import Word'}
               <input type="file" accept=".docx,.doc" onChange={handleWordImport} className="hidden" disabled={importing} />
             </label>
           </div>
