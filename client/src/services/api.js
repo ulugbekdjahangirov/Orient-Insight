@@ -75,6 +75,7 @@ export const bookingsApi = {
   debugCountByType: (year) => api.get('/bookings/debug/count-by-type', { params: year ? { year } : {} }),
   // Copy all bookings from one year to another
   copyFromYear: (fromYear, toYear) => api.post('/bookings/copy', { fromYear, toYear }),
+  autoAssignGuides: (year) => api.post('/bookings/auto-assign-guides', { year }),
   deleteByYear: (year) => api.delete(`/bookings/by-year/${year}`),
 };
 

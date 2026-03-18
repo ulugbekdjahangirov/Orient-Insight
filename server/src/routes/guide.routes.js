@@ -345,7 +345,8 @@ router.put('/:id', authenticate, async (req, res) => {
       halfDayRate,
       city,
       cityRate,
-      telegramChatId
+      telegramChatId,
+      priority
     } = req.body;
 
     // Базовые поля могут редактировать все авторизованные
@@ -365,6 +366,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (city !== undefined) updateData.city = city;
     if (cityRate !== undefined) updateData.cityRate = parseFloat(cityRate);
     if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
+    if (priority !== undefined) updateData.priority = priority === null || priority === '' ? null : parseInt(priority);
 
 
     // Конфиденциальные поля — доступны всем авторизованным пользователям

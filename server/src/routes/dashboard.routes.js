@@ -416,7 +416,13 @@ router.get('/financial', authenticate, async (req, res) => {
     // ── Shamixon summary ─────────────────────────────────────────────────
     let shamixonPayment = 0, shamixonIncoming = 0, shamixonReceived = 0, shamixonTotal = 0;
     try {
-      const shamixonItems = shamixonSetting ? JSON.parse(shamixonSetting.value) : [];
+      const allShamixonItems = shamixonSetting ? JSON.parse(shamixonSetting.value) : [];
+      // Filter by year using the date in the `name` field (e.g. "2026-03-03")
+      const shamixonItems = allShamixonItems.filter(item => {
+        if (!item.name) return true;
+        const itemYear = new Date(item.name).getFullYear();
+        return isNaN(itemYear) || itemYear === year;
+      });
       for (const item of shamixonItems) {
         const payment = parseFloat(item.gruppe) || 0;
         const commission = payment * 0.01;

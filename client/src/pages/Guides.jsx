@@ -28,7 +28,8 @@ import {
   MoreVertical,
   Info,
   DollarSign,
-  Copy
+  Copy,
+  UserCheck
 } from 'lucide-react';
 
 // Helper function to calculate booking status
@@ -79,6 +80,7 @@ export default function Guides() {
   const [guideDropdown, setGuideDropdown] = useState(null); // booking ID for which guide dropdown is open
   const [guideDropdownPos, setGuideDropdownPos] = useState({ top: 0, left: 0 }); // position for fixed dropdown
   const [cityPaymentFormData, setCityPaymentFormData] = useState({ city: '', cityRate: 0 });
+  const [assigningGuides, setAssigningGuides] = useState(false);
 
   function getEmptyFormData() {
     return {
@@ -102,7 +104,8 @@ export default function Guides() {
       city: '',
       cityRate: 0,
       notes: '',
-      telegramChatId: ''
+      telegramChatId: '',
+      priority: ''
     };
   }
 
@@ -111,6 +114,13 @@ export default function Guides() {
     loadAlerts();
   }, [selectedYear]);
 
+  const sortGuides = (list) => [...list].sort((a, b) => {
+    const pa = a.priority ?? 9999;
+    const pb = b.priority ?? 9999;
+    if (pa !== pb) return pa - pb;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
   const loadGuides = async () => {
     try {
       const response = await guidesApi.getAll(true, selectedYear);
@@ -118,9 +128,9 @@ export default function Guides() {
       if (guides.length === 0) {
         // Fallback: show previous year's guides
         const prevRes = await guidesApi.getAll(true, selectedYear - 1);
-        setGuides(prevRes.data.guides || []);
+        setGuides(sortGuides(prevRes.data.guides || []));
       } else {
-        setGuides(guides);
+        setGuides(sortGuides(guides));
       }
     } catch (error) {
       toast.error('Ошибка загрузки гидов');
@@ -163,7 +173,8 @@ export default function Guides() {
         halfDayRate: guide.halfDayRate ?? 55,
         city: guide.city || '',
         cityRate: guide.cityRate ?? 0,
-        notes: guide.notes || ''
+        notes: guide.notes || '',
+        priority: guide.priority ?? ''
       });
     } else {
       setEditingGuide(null);
@@ -261,6 +272,24 @@ export default function Guides() {
       toast.error('Ошибка загрузки туров');
     } finally {
       setBookingsLoading(false);
+    }
+  };
+
+  const handleAutoAssignGuides = async () => {
+    setAssigningGuides(true);
+    try {
+      const res = await bookingsApi.autoAssignGuides(selectedYear);
+      const { assigned, skipped } = res.data;
+      if (assigned === 0) {
+        toast(skipped === 0 ? 'Barcha bookinglar allaqachon guide bilan' : `${skipped} ta booking uchun bo'sh guide topilmadi`, { icon: 'ℹ️' });
+      } else {
+        toast.success(`${assigned} ta booking ga guide tayinlandi${skipped > 0 ? `, ${skipped} ta tayinlanmadi` : ''}`);
+      }
+      loadAllBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Xatolik yuz berdi');
+    } finally {
+      setAssigningGuides(false);
     }
   };
 
@@ -669,7 +698,7 @@ export default function Guides() {
         </div>
         {/* DESKTOP: table */}
         <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[1100px]">
           <thead>
             <tr style={{ background: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 50%, #6366f1 100%)' }}>
               <th className="w-9 px-3 py-4 text-left"></th>
@@ -679,6 +708,7 @@ export default function Guides() {
               <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">ПАСПОРТ №</th>
               <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">BERILGAN</th>
               <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">AMAL QILADI</th>
+              <th className="px-3 py-4 text-center text-xs font-black text-white uppercase tracking-wider">PRIORITET</th>
               <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">½ DAY</th>
               <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">DAY</th>
               <th className="px-3 py-4 text-center text-xs font-black text-white uppercase tracking-wider">ТУРЫ</th>
@@ -769,6 +799,24 @@ export default function Guides() {
                         {getPassportStatusBadge(guide.passportStatus)}
                       </div>
                     ) : <span className="text-gray-300 text-sm">—</span>}
+                  </td>
+                  {/* PRIORITET */}
+                  <td className="px-3 py-4 text-center">
+                    <input
+                      key={`p-${guide.id}-${guide.priority}`}
+                      type="number"
+                      min="1"
+                      max="99"
+                      defaultValue={guide.priority ?? ''}
+                      onBlur={async (e) => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value);
+                        if (val === guide.priority) return;
+                        await guidesApi.update(guide.id, { priority: val });
+                        loadGuides();
+                      }}
+                      placeholder="—"
+                      className="w-12 text-center text-xs font-bold border border-indigo-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50 text-indigo-700"
+                    />
                   </td>
                   {/* HALF DAY */}
                   <td className="px-3 py-4">
@@ -1013,6 +1061,16 @@ export default function Guides() {
                 )}
               </div>
               {/* DESKTOP: full table */}
+              <div className="hidden md:flex justify-end px-4 pt-4">
+                <button
+                  onClick={handleAutoAssignGuides}
+                  disabled={assigningGuides}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-60 text-white rounded-xl shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-bold text-sm"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  {assigningGuides ? 'Tayinlanmoqda...' : 'Auto Gid'}
+                </button>
+              </div>
               <div className="hidden md:block relative overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 relative">

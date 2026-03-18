@@ -23,7 +23,7 @@ export default function Layout() {
 
       {/* Main content with responsive margins */}
       <div
-        className={`transition-all duration-300 ${
+        className={`transition-all duration-300 min-w-0 overflow-x-hidden ${
           isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-20'
         }`}
       >

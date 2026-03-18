@@ -395,6 +395,101 @@ router.post('/copy', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/bookings/auto-assign-guides — Reset all guide assignments and reassign by priority
+router.post('/auto-assign-guides', authenticate, async (req, res) => {
+  try {
+    const { year } = req.body;
+    if (!year) return res.status(400).json({ error: 'year required' });
+    const y = parseInt(year);
+
+    // STEP 1: Clear ALL existing guide assignments for this year
+    await prisma.booking.updateMany({
+      where: { bookingYear: y, status: { not: 'CANCELLED' } },
+      data: { guideId: null },
+    });
+
+    // STEP 2: Get all bookings sorted by arrivalDate only (chronological)
+    // Same-date: ER→CO→KAS→ZA as tiebreaker
+    const TOUR_ORDER = { 'ER': 0, 'CO': 1, 'KAS': 2, 'ZA': 3 };
+    const bookings = await prisma.booking.findMany({
+      where: { bookingYear: y, status: { not: 'CANCELLED' } },
+      include: { tourType: true },
+    });
+    bookings.sort((a, b) => {
+      const dateA = new Date(a.arrivalDate || a.departureDate);
+      const dateB = new Date(b.arrivalDate || b.departureDate);
+      if (dateA - dateB !== 0) return dateA - dateB;
+      // Same date: ER first
+      const ta = TOUR_ORDER[a.tourType?.code] ?? 9;
+      const tb = TOUR_ORDER[b.tourType?.code] ?? 9;
+      return ta - tb;
+    });
+
+    // STEP 3: Get all active guides with priority set for this year
+    const allGuides = await prisma.guide.findMany({
+      where: { year: y, isActive: true, priority: { not: null } },
+    });
+
+    if (allGuides.length === 0) {
+      return res.json({ assigned: 0, skipped: bookings.length, message: 'No guides with priority set for this year' });
+    }
+
+    // Track assignments made in this run
+    const guideAssignments = new Map();
+    for (const g of allGuides) guideAssignments.set(g.id, []);
+    const assignCount = new Map();
+    for (const g of allGuides) assignCount.set(g.id, 0);
+
+    // Overlap: strict — same-day boundary is OK (end==start is allowed)
+    const overlaps = (a1, a2, b1, b2) => {
+      if (!a1 || !a2 || !b1 || !b2) return false;
+      return new Date(a1) < new Date(b2) && new Date(a2) > new Date(b1);
+    };
+
+    const priorities = [...new Set(allGuides.map(g => g.priority))].sort((a, b) => a - b);
+
+    let assigned = 0;
+
+    for (const booking of bookings) {
+      const arrival = booking.arrivalDate || booking.departureDate;
+      const end = booking.endDate;
+      if (!arrival || !end) continue;
+
+      let chosenGuide = null;
+
+      // Try each priority level in order (1 → 2 → 3 ...)
+      for (const prio of priorities) {
+        const candidates = allGuides.filter(g => g.priority === prio);
+
+        // Free candidates: no overlap with their already-assigned tours
+        const freeCandidates = candidates.filter(g => {
+          const assignments = guideAssignments.get(g.id) || [];
+          return !assignments.some(a => overlaps(arrival, end, a.arrivalDate, a.endDate));
+        });
+
+        if (freeCandidates.length > 0) {
+          // Among free same-priority guides: pick the one with fewest assignments (load balance)
+          freeCandidates.sort((a, b) => (assignCount.get(a.id) || 0) - (assignCount.get(b.id) || 0));
+          chosenGuide = freeCandidates[0];
+          break;
+        }
+      }
+
+      if (chosenGuide) {
+        await prisma.booking.update({ where: { id: booking.id }, data: { guideId: chosenGuide.id } });
+        guideAssignments.get(chosenGuide.id).push({ arrivalDate: arrival, endDate: end });
+        assignCount.set(chosenGuide.id, (assignCount.get(chosenGuide.id) || 0) + 1);
+        assigned++;
+      }
+    }
+
+    res.json({ assigned, skipped: bookings.length - assigned, total: bookings.length });
+  } catch (err) {
+    console.error('Auto-assign guides error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const WI_CONTACTS_KEY_EARLY = 'WI_EMAIL_CONTACTS';
 const DEFAULT_WI_CONTACTS_EARLY = [
   { name: 'Celinda', email: 'team.produkt.celinda@world-insight.de' },

@@ -103,6 +103,8 @@ model Guide {
   city        String?                   // City name for city-specific rate
   cityRate    Float?    @default(0)     // City-specific rate in USD
 
+  priority    Int?               // Auto-assign priority (1=highest, null=not in pool)
+
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt @default(now())

@@ -17,7 +17,8 @@ import {
   Calendar,
   MapPin,
   Copy,
-  Trash
+  Trash,
+  UserCheck
 } from 'lucide-react';
 
 const statusLabels = {
@@ -108,6 +109,7 @@ export default function Bookings() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeBookingTab, setActiveBookingTab] = useState(() => localStorage.getItem('bookings_active_tab') || 'TOTAL');
   const [statusFilter, setStatusFilter] = useState(null);
+  const [assigningGuides, setAssigningGuides] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -226,6 +228,24 @@ export default function Bookings() {
       loadBookings();
     } catch (error) {
       toast.error('Error deleting');
+    }
+  };
+
+  const handleAutoAssignGuides = async () => {
+    setAssigningGuides(true);
+    try {
+      const res = await bookingsApi.autoAssignGuides(selectedYear);
+      const { assigned, skipped, total } = res.data;
+      if (assigned === 0) {
+        toast(skipped === 0 ? 'Barcha bookinglar allaqachon guide bilan' : `${skipped} ta booking uchun bo'sh guide topilmadi`, { icon: 'ℹ️' });
+      } else {
+        toast.success(`${assigned} ta booking ga guide tayinlandi${skipped > 0 ? `, ${skipped} ta tayinlanmadi` : ''}`);
+      }
+      loadBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Xatolik yuz berdi');
+    } finally {
+      setAssigningGuides(false);
     }
   };
 
