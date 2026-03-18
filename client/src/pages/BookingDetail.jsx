@@ -16368,9 +16368,9 @@ License №T-0084-08 from 2021-04-26`;
 
       {/* Form - show for Info and Rooms tabs, or for new bookings */}
       {(isNew || activeTab === 'info' || activeTab === 'rooms') && (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 ${activeTab !== 'rooms' ? 'lg:grid-cols-3' : ''} gap-6`}>
         {/* Main info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${activeTab !== 'rooms' ? 'lg:col-span-2' : ''} space-y-6`}>
           {/* Basic info */}
           {(isNew || activeTab === 'info') && (
           <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-blue-100 p-4 md:p-8">
@@ -16673,7 +16673,7 @@ License №T-0084-08 from 2021-04-26`;
 
           {/* Hotel Room Allocations */}
           {!isNew && activeTab === 'rooms' && (
-            <div className={`bg-gradient-to-br from-gray-50 via-white to-gray-50 py-4 md:py-8 md:px-8 w-full ${!isMobile ? '-mx-4' : ''}`} style={!isMobile ? { width: 'calc(100vw - 16rem)', marginLeft: '-1rem' } : {}}>
+            <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 py-4 md:py-8 md:px-6 w-full rounded-2xl border border-gray-200 overflow-hidden">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 md:mb-8">
                 <h2 className="text-lg md:text-2xl font-black text-gray-900 flex items-center gap-3 md:gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center shadow-lg">

@@ -1760,8 +1760,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         </div>
       ) : (
         /* ===== DESKTOP HEADER ===== */
-        <div className="flex flex-row items-center justify-between bg-gradient-to-r from-primary-50 to-white p-4 rounded-xl border border-primary-100 gap-3">
-          <div className="flex items-center gap-3 flex-nowrap">
+        <div className="flex flex-row items-center justify-between bg-gradient-to-r from-primary-50 to-white p-4 rounded-xl border border-primary-100 gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Total */}
             <div className="flex flex-col items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl">
               <Users className="w-5 h-5 text-primary-500 mb-1" />
