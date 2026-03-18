@@ -811,6 +811,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     }
   }, [invoiceItems, invoice?.id, bezahlteRechnung, showThreeRows]);
 
+  // If firma is selected, price/quantity fields are locked (read-only)
+  const isLocked = !!invoice?.firma;
+
   // Get invoice date: locked to creation date when firma is selected, today otherwise
   const getInvoiceDate = () => {
     if (invoiceType === 'Dalolatnoma' && booking?.endDate) {
@@ -1471,8 +1474,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         <div className="flex flex-col md:flex-row gap-2 md:gap-3 md:justify-end print:hidden">
           {invoiceType !== 'Dalolatnoma' && (
             <button
-              onClick={addItem}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg font-semibold"
+              onClick={() => !isLocked && addItem()}
+              disabled={isLocked}
+              title={isLocked ? 'Firma tanlanganda yangi qator qo\'shib bo\'lmaydi' : ''}
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl transition-all shadow-lg font-semibold ${isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'}`}
             >
               <Plus className="w-5 h-5" />
               Add Item
@@ -1481,7 +1486,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           {invoiceType !== 'Dalolatnoma' && zusatzkostenOptions.length > 0 && (
             <select
               defaultValue=""
+              disabled={isLocked}
               onChange={(e) => {
+                if (isLocked) return;
                 const idx = parseInt(e.target.value);
                 if (isNaN(idx)) return;
                 const zk = zusatzkostenOptions[idx];
@@ -1496,7 +1503,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                 setInvoiceItems([...items, newItem]);
                 e.target.value = '';
               }}
-              className="px-4 py-3 bg-white border-2 border-pink-300 text-gray-700 rounded-xl shadow-lg font-semibold focus:outline-none focus:border-pink-500 cursor-pointer"
+              className={`px-4 py-3 bg-white border-2 rounded-xl shadow-lg font-semibold focus:outline-none ${isLocked ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-pink-300 text-gray-700 focus:border-pink-500 cursor-pointer'}`}
             >
               <option value="">+ Zusatzkosten</option>
               {zusatzkostenOptions.map((zk, idx) => (
@@ -1802,8 +1809,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                           id={`price-${item.id}`}
                           type="number"
                           value={item.einzelpreis}
-                          onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
-                          className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                          onChange={(e) => !isLocked && updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
+                          readOnly={isLocked}
+                          className={`w-full bg-transparent border-none focus:outline-none text-right rounded px-2 py-1 print:bg-transparent transition-all font-semibold ${isLocked ? 'cursor-not-allowed opacity-70' : 'focus:bg-gray-100'}`}
+                          title={isLocked ? 'Firma tanlanganda narx o\'zgartirib bo\'lmaydi' : ''}
                         />
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">
@@ -1811,8 +1820,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                           id={`quantity-${item.id}`}
                           type="number"
                           value={item.anzahl}
-                          onChange={(e) => updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
-                          className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                          onChange={(e) => !isLocked && updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
+                          readOnly={isLocked}
+                          className={`w-full bg-transparent border-none focus:outline-none text-center rounded px-2 py-1 print:bg-transparent transition-all font-semibold ${isLocked ? 'cursor-not-allowed opacity-70' : 'focus:bg-gray-100'}`}
+                          title={isLocked ? 'Firma tanlanganda miqdor o\'zgartirib bo\'lmaydi' : ''}
                         />
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-base">
@@ -1823,18 +1834,21 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => {
+                              if (isLocked) return;
                               const input = document.getElementById(`desc-${item.id}`);
                               if (input) input.focus();
                             }}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                            title="Edit description"
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
+                            title={isLocked ? 'Firma tanlanganda tahrirlash mumkin emas' : 'Edit description'}
+                            disabled={isLocked}
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => deleteItem(item.id)}
-                            className="text-red-500 hover:text-red-700 transition-colors"
-                            title="Delete item"
+                            onClick={() => !isLocked && deleteItem(item.id)}
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
+                            title={isLocked ? 'Firma tanlanganda o\'chirish mumkin emas' : 'Delete item'}
+                            disabled={isLocked}
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
