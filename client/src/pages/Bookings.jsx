@@ -106,7 +106,7 @@ export default function Bookings() {
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [activeBookingTab, setActiveBookingTab] = useState('TOTAL');
+  const [activeBookingTab, setActiveBookingTab] = useState(() => localStorage.getItem('bookings_active_tab') || 'TOTAL');
   const [statusFilter, setStatusFilter] = useState(null);
 
   // Filters
@@ -155,11 +155,12 @@ export default function Bookings() {
       const response = await bookingsApi.getAll(backendParams);
       let bookingsData = response.data.bookings;
 
-      // Auto-copy from previous year if no bookings exist for this year
-      if (bookingsData.length === 0 && !status && !backendParams.search && !backendParams.tourTypeId && !backendParams.guideId) {
+      // Auto-copy from previous year if prev year has more bookings than current year
+      if (!status && !backendParams.search && !backendParams.tourTypeId && !backendParams.guideId) {
         const prevYear = selectedYear - 1;
-        const prevRes = await bookingsApi.getAll({ ...backendParams, year: prevYear, limit: 1 });
-        if (prevRes.data.bookings.length > 0) {
+        const prevRes = await bookingsApi.getAll({ year: prevYear, limit: 200 });
+        const prevCount = prevRes.data.bookings.length;
+        if (prevCount > bookingsData.length) {
           await bookingsApi.copyFromYear(prevYear, selectedYear);
           const refetch = await bookingsApi.getAll(backendParams);
           bookingsData = refetch.data.bookings;
@@ -431,7 +432,7 @@ export default function Bookings() {
           return (
             <button
               key={tab}
-              onClick={() => setActiveBookingTab(tab)}
+              onClick={() => { setActiveBookingTab(tab); localStorage.setItem('bookings_active_tab', tab); }}
               className="flex flex-col items-center justify-center gap-0.5 py-3 px-2 rounded-2xl font-bold transition-all duration-300 shadow-sm"
               style={isActive
                 ? { background: color, color: '#fff', boxShadow: `0 4px 18px ${color}55`, transform: 'translateY(-2px)' }
