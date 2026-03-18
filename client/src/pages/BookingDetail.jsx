@@ -1625,6 +1625,9 @@ export default function BookingDetail() {
           updates.endDate = format(addDays(departureDate, 13), 'yyyy-MM-dd');
         } else if (tourTypeCode === 'KAS') {
           updates.endDate = format(addDays(departureDate, 22), 'yyyy-MM-dd');
+        } else if (tourTypeCode === 'ZA') {
+          // ZA: Jartepa = Tour Start + 9, Oybek = Jartepa + 4, End = Jartepa + 5 (rendered from endDate)
+          updates.endDate = format(addDays(departureDate, 9), 'yyyy-MM-dd');
         }
 
         setFormData(prev => ({ ...prev, ...updates }));
@@ -2463,6 +2466,10 @@ export default function BookingDetail() {
 
         // Auto-set country to Germany for all tours if not set
         const autoCountry = !b.country ? 'Germany' : b.country;
+
+        // Initialize prevDepartureDateRef so the auto-update useEffect doesn't
+        // overwrite DB dates on initial load (only trigger when user actually changes Tour Start)
+        prevDepartureDateRef.current = departureDateStr;
 
         setFormData({
           bookingNumber: b.bookingNumber,
