@@ -68,6 +68,7 @@ export default function Rechnung() {
   const [rechnungItems, setRechnungItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [gutschriftItems, setGutschriftItems] = useState([]);
+  const [gutschriftTotalForInvoice, setGutschriftTotalForInvoice] = useState(0);
   const [orientItems, setOrientItems] = useState([]);
   const [infuturestormItems, setInfuturestormItems] = useState([]);
   const [shamixonItems, setShamixonItems] = useState([]);
@@ -159,6 +160,12 @@ export default function Rechnung() {
 
       // Client-side filtering for Rechnung module
       if (activeModule === 'rechnung') {
+        // Compute gutschrift total from all invoices before filtering
+        const gutschriftSum = invoices
+          .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
+          .reduce((s, inv) => s + (inv.totalAmount || 0), 0);
+        setGutschriftTotalForInvoice(gutschriftSum);
+
         // Show only "Rechnung" and "Neue Rechnung" types (not Gutschrift)
         // AND only invoices with firma selected
         invoices = invoices.filter(inv =>
@@ -401,13 +408,17 @@ export default function Rechnung() {
                   {rechnungItems.length > 0 && (() => {
                     const paidItems = rechnungItems.filter(i => i.isPaid);
                     const paidSum = paidItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
-                    const totalSum = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const grossTotal = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const totalSum = grossTotal - gutschriftTotalForInvoice;
                     const remaining = totalSum - paidSum;
                     return (
                       <div className="rounded-xl overflow-hidden border border-amber-100">
                         <div className="px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50">
                           <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
-                          <span className="text-gray-900 text-base">{formatNumber(totalSum)}</span>
+                          <div className="text-right">
+                            <span className="text-gray-900 text-base">{formatNumber(totalSum)}</span>
+                            {gutschriftTotalForInvoice > 0 && <div className="text-[9px] text-emerald-600 font-normal">Gutschrift: −{formatNumber(gutschriftTotalForInvoice)}</div>}
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-px bg-gray-100">
                           <div className="bg-green-50 px-3 py-2">
@@ -497,13 +508,17 @@ export default function Rechnung() {
                       {rechnungItems.length > 0 && (() => {
                         const paidItems = rechnungItems.filter(i => i.isPaid);
                         const paidSum = paidItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
-                        const totalSum = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                        const grossTotal = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                        const totalSum = grossTotal - gutschriftTotalForInvoice;
                         const remaining = totalSum - paidSum;
                         return (
                           <>
                             <tr className="bg-gradient-to-r from-amber-100 to-orange-100 font-bold">
                               <td className="border border-gray-300 px-6 py-3 text-gray-900" colSpan="4">TOTAL</td>
-                              <td className="border border-gray-300 px-6 py-3 text-right text-gray-900">{formatNumber(totalSum)}</td>
+                              <td className="border border-gray-300 px-6 py-3 text-right text-gray-900">
+                                {formatNumber(totalSum)}
+                                {gutschriftTotalForInvoice > 0 && <div className="text-[10px] text-emerald-600 font-normal">Gutschrift: −{formatNumber(gutschriftTotalForInvoice)}</div>}
+                              </td>
                               <td className="border border-gray-300 px-4 py-3 text-center text-xs text-gray-500">{paidItems.length}/{rechnungItems.length}</td>
                               <td className="border border-gray-300 px-6 py-3"></td>
                             </tr>
