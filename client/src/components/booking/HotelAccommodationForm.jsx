@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { bookingsApi, hotelsApi, tourTypesApi } from '../../services/api';
 import { UZS_PER_USD, UZS_PER_EUR } from '../../constants/rates';
 import toast from 'react-hot-toast';
@@ -68,6 +68,8 @@ export default function HotelAccommodationForm({
   const [tourists, setTourists] = useState([]);
   const [roomingList, setRoomingList] = useState([]);
   const [guestDates, setGuestDates] = useState({}); // Track individual guest check-in/out dates
+  const [useManualCalc, setUseManualCalc] = useState(false);
+  const useManualCalcRef = useRef(false);
 
   // Load accommodation room types dictionary, tour itinerary, and tourists on mount
   useEffect(() => {
@@ -155,6 +157,10 @@ export default function HotelAccommodationForm({
       if (editingAccommodation.id) {
         loadRoomingList(editingAccommodation.id);
       }
+      // Restore manual mode if previously saved (totalGuests=0 is the flag)
+      const manualMode = editingAccommodation.totalGuests === 0;
+      useManualCalcRef.current = manualMode;
+      setUseManualCalc(manualMode);
     }
   }, [editingAccommodation]);
 
@@ -193,12 +199,12 @@ export default function HotelAccommodationForm({
     // Always auto-fill from rooming list if available (for both new and existing accommodations)
     // This ensures Baetgen extra nights are always included, even if not saved in database
     if (roomingList.length > 0 && formData.hotelId && selectedHotelRoomTypes.length > 0) {
-      // Small delay to ensure all data is loaded
       const timer = setTimeout(() => {
+        // Check ref (latest value) — skip if manual mode active at the time timeout fires
+        if (useManualCalcRef.current) return;
         autoFillFromRoomingList();
       }, 100);
       return () => clearTimeout(timer);
-    } else {
     }
   }, [roomingList, selectedHotelRoomTypes]);
 
@@ -240,7 +246,8 @@ export default function HotelAccommodationForm({
 
     // Use roomingList if loaded (has hotel-specific dates), otherwise use tourists
     const dataSource = roomingList.length > 0 ? roomingList : tourists;
-    const hasRoomingData = dataSource.length > 0 && formData.checkInDate && formData.checkOutDate;
+    // Manual mode: ignore rooming list, calculate from form rows (qty × nights × price)
+    const hasRoomingData = !useManualCalc && dataSource.length > 0 && formData.checkInDate && formData.checkOutDate;
 
 
     // Calculate room-nights from rooming list (per room type)
@@ -652,11 +659,14 @@ export default function HotelAccommodationForm({
     }
 
     // Early check-in surcharge: tourists with "Ранний заезд" in remarks → +0.5 night per room
+    // Only applies at FIRST accommodation — tourist travels with group at subsequent hotels
+    // Always use `tourists` for remarks check — roomingList data may not include remarks field
     let earlyCheckInCost = 0;
     const earlyCheckInDetails = [];
-    if (hasRoomingData) {
+    if (hasRoomingData && isFirstAccommodation) {
       const earlyByRoomType = {};
-      dataSource.forEach(t => {
+      const remarksSource = tourists.length > 0 ? tourists : dataSource;
+      remarksSource.forEach(t => {
         if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
         let rt = (t.roomPreference || '').toUpperCase();
         if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
@@ -684,16 +694,19 @@ export default function HotelAccommodationForm({
     totalCost += earlyCheckInCost;
 
     return { totalRooms, totalGuests, totalCost, totalTouristTax, isPAX, currency, extraNightsTotal, extraNightsDetails, roomingListDetails, earlyCheckInCost, earlyCheckInDetails };
-  }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes, tourists, roomingList, formData.checkInDate, formData.checkOutDate, formData.hotelId, editingAccommodation, hotels, booking, guestDates]);
+  }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes, tourists, roomingList, formData.checkInDate, formData.checkOutDate, formData.hotelId, editingAccommodation, hotels, booking, guestDates, useManualCalc]);
 
   // Auto-save totals when they are calculated (after auto-fill)
   const [lastAutoSave, setLastAutoSave] = useState(0);
   useEffect(() => {
-    if (editingAccommodation && totals.totalCost > 0 && rooms.length > 0) {
+    // Skip auto-save in manual mode — user saves explicitly via Save button
+    // Manual mode flag (totalGuests=0) must not be overwritten by auto-save
+    if (editingAccommodation && totals.totalCost > 0 && rooms.length > 0 && !useManualCalcRef.current) {
       // Only auto-save once after auto-fill (prevent loops)
       const now = Date.now();
       if (now - lastAutoSave > 2000) {
         const timer = setTimeout(async () => {
+          if (useManualCalcRef.current) return; // Re-check at fire time
           try {
             await bookingsApi.updateAccommodation(bookingId, editingAccommodation.id, {
               totalCost: totals.totalCost,
@@ -795,7 +808,7 @@ export default function HotelAccommodationForm({
   };
 
   const addRoom = () => {
-    setRooms(prev => [...prev, { ...emptyRoom }]);
+    setRooms(prev => [...prev, { ...emptyRoom, nights }]);
   };
 
   const removeRoom = (index) => {
@@ -1141,12 +1154,13 @@ export default function HotelAccommodationForm({
         rooms: validRooms.map(room => ({
           roomTypeCode: room.roomTypeCode,
           roomsCount: parseInt(room.roomsCount) || 1,
-          guestsPerRoom: getMaxGuestsForRoomType(room.roomTypeCode), // Get from dictionary
+          nights: parseFloat(room.nights) || nights,
+          guestsPerRoom: getMaxGuestsForRoomType(room.roomTypeCode),
           pricePerNight: parseFloat(room.pricePerNight) || 0
         })),
-        // Include calculated totals from rooming list
+        // Manual mode: totalGuests=0 signals to card "use saved totalCost, skip recalculation"
         totalRooms: totals.totalRooms,
-        totalGuests: totals.totalGuests,
+        totalGuests: useManualCalc ? 0 : totals.totalGuests,
         totalCost: totals.totalCost,
         totalTouristTax: totals.totalTouristTax
       };
@@ -1383,6 +1397,18 @@ export default function HotelAccommodationForm({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => { useManualCalcRef.current = !useManualCalcRef.current; setUseManualCalc(v => !v); }}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                    useManualCalc
+                      ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
+                      : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title={useManualCalc ? 'Manual rejim: Qty × Nights × Price/Night dan hisoblanadi' : 'Auto rejim: Rooming List dan hisoblanadi'}
+                >
+                  ✏️ {useManualCalc ? 'Manual' : 'Auto'}
+                </button>
+                <button
+                  type="button"
                   onClick={autoFillFromRoomingList}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200"
                   title="Calculate from Rooming List (tourists)"
@@ -1403,11 +1429,11 @@ export default function HotelAccommodationForm({
 
             {/* Room Type Headers — desktop only */}
             <div className="hidden md:grid grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 px-1">
-              <div className="col-span-3">Type</div>
-              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2">Type</div>
+              <div className="col-span-1 text-center">Qty</div>
               <div className="col-span-2 text-center">Nights</div>
-              <div className="col-span-2 text-center">Price/Night</div>
-              <div className="col-span-2 text-center">Total</div>
+              <div className="col-span-3 text-center">Price/Night</div>
+              <div className="col-span-3 text-center">Total</div>
               <div className="col-span-1"></div>
             </div>
 
@@ -1428,7 +1454,7 @@ export default function HotelAccommodationForm({
                   <div key={index}>
                     {/* Desktop: table row */}
                     <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-3">
+                      <div className="col-span-2">
                         <select
                           value={room.roomTypeCode}
                           onChange={(e) => handleRoomChange(index, 'roomTypeCode', e.target.value)}
@@ -1440,7 +1466,7 @@ export default function HotelAccommodationForm({
                           ))}
                         </select>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <input type="number" min="1" value={room.roomsCount}
                           onChange={(e) => handleRoomChange(index, 'roomsCount', e.target.value)}
                           className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
@@ -1452,13 +1478,13 @@ export default function HotelAccommodationForm({
                           className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-3">
                         <input type="number" min="0" step="0.01" value={room.pricePerNight}
                           onChange={(e) => handleRoomChange(index, 'pricePerNight', e.target.value)}
                           className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
-                      <div className="col-span-2 text-center text-sm font-medium text-gray-700">
+                      <div className="col-span-3 text-center text-sm font-medium text-gray-700">
                         {currency === 'UZS' ? roomCost.toLocaleString() : roomCost.toFixed(2)}{currencySymbol}
                       </div>
                       <div className="col-span-1 text-center">
@@ -1561,6 +1587,21 @@ export default function HotelAccommodationForm({
                 </div>
               </div>
             </div>
+            {/* Ранний заезд surcharge summary — always visible */}
+            {totals.earlyCheckInDetails?.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-orange-200 space-y-1">
+                {totals.earlyCheckInDetails.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-orange-50 rounded-lg px-3 py-1.5">
+                    <span className="text-orange-700 font-medium">
+                      🌅 {d.roomType} (Ранний заезд): {d.rooms} xona × 0.5 kecha × {totals.currency === 'UZS' ? d.pricePerNight.toLocaleString() : d.pricePerNight.toFixed(2)}
+                    </span>
+                    <span className="font-bold text-orange-600 ml-4 whitespace-nowrap">
+                      +{totals.currency === 'UZS' ? d.surcharge.toLocaleString() : d.surcharge.toFixed(2)} {totals.currency === 'UZS' ? 'UZS' : totals.currency}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Detailed Calculation - Rooming List Table */}
@@ -1581,7 +1622,7 @@ export default function HotelAccommodationForm({
 
               <div className="mt-3 bg-white rounded-xl border border-gray-200 shadow-inner overflow-hidden overflow-x-auto">
                 {/* Table Header */}
-                <div className="grid grid-cols-[20px_minmax(100px,1fr)_45px_65px_65px_40px_55px] gap-1.5 text-xs font-semibold text-gray-500 py-3 px-3 bg-gray-50 border-b border-gray-200 min-w-[480px]">
+                <div className="grid grid-cols-[20px_minmax(120px,1fr)_45px_65px_65px_40px_75px] gap-1.5 text-xs font-semibold text-gray-500 py-3 px-3 bg-gray-50 border-b border-gray-200 min-w-[520px]">
                   <span>#</span>
                   <span>Guest</span>
                   <span className="text-center">Room</span>
@@ -1614,7 +1655,7 @@ export default function HotelAccommodationForm({
                     return (
                       <div
                         key={detail.touristId || idx}
-                        className={`grid grid-cols-[20px_minmax(100px,1fr)_45px_65px_65px_40px_55px] gap-1.5 py-2.5 px-3 text-sm items-center border-b border-gray-100 last:border-0 min-w-[480px] ${
+                        className={`grid grid-cols-[20px_minmax(120px,1fr)_45px_65px_65px_40px_75px] gap-1.5 py-2.5 px-3 text-sm items-center border-b border-gray-100 last:border-0 min-w-[520px] ${
                           hasExtra ? 'bg-gradient-to-r from-amber-50 to-yellow-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
@@ -1650,7 +1691,7 @@ export default function HotelAccommodationForm({
                 </div>
 
                 {/* Footer Summary */}
-                <div className="py-3 px-4 bg-gray-50 border-t border-gray-200">
+                <div className="py-3 px-4 bg-gray-50 border-t border-gray-200 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="text-gray-600">
                       Hotel period: <span className="font-semibold text-gray-800">
@@ -1661,6 +1702,20 @@ export default function HotelAccommodationForm({
                       <span>✓</span> Calculated from Rooming List
                     </div>
                   </div>
+                  {totals.earlyCheckInDetails?.length > 0 && (
+                    <div className="border-t border-orange-200 pt-2 space-y-1">
+                      {totals.earlyCheckInDetails.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs bg-orange-50 rounded px-2 py-1">
+                          <span className="text-orange-700 font-medium">
+                            🌅 {d.roomType} (Ранний заезд): {d.rooms} xona × 0.5 kecha × {totals.currency === 'UZS' ? d.pricePerNight.toLocaleString() : d.pricePerNight.toFixed(2)}
+                          </span>
+                          <span className="font-bold text-orange-600">
+                            +{totals.currency === 'UZS' ? d.surcharge.toLocaleString() : d.surcharge.toFixed(2)} {totals.currency === 'UZS' ? 'UZS' : totals.currency}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </details>

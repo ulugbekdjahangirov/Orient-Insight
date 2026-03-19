@@ -5875,9 +5875,14 @@ export default function BookingDetail() {
           });
 
           // Early check-in surcharge: +0.5 night per room with "Ранний заезд"
+          // Only at first accommodation — tourist travels with group at subsequent hotels
+          const _allCheckIns = accommodations.map(a => a.checkInDate).filter(Boolean);
+          const _firstCheckIn = _allCheckIns.length > 0 ? Math.min(..._allCheckIns) : null;
+          const _isFirstAcc = _firstCheckIn !== null && acc.checkInDate === _firstCheckIn;
           const earlyByRoomType = {};
-          accTourists.forEach(t => {
-            if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
+          if (_isFirstAcc) accTourists.forEach(t => {
+            const _rlNote = (t.accommodationRoomingList || []).find(e => parseInt(e.accommodationId) === parseInt(acc.id))?.notes || '';
+            if (!(t.remarks || '').toLowerCase().includes('ранний заезд') && !_rlNote.toLowerCase().includes('ранний заезд')) return;
             let rt = (t.roomPreference || '').toUpperCase();
             if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
             if (rt === 'TWIN') rt = 'TWN';
@@ -17140,6 +17145,8 @@ License №T-0084-08 from 2021-04-26`;
 
                                 // Calculate guest-nights per room type from Final List
                                 const guestNightsPerRoomType = {};
+                                const guestDateGroupsPerRoomType = {}; // roomType -> {dateKey -> {count, nights}}
+                                const extraNightGroupsPerRoomType = {}; // roomType -> {extraNights -> {count, extraNights, names[]}}
                                 const touristDetails = {}; // Track individual tourist nights for breakdown
 
                                 accTourists.forEach(tourist => {
@@ -17179,6 +17186,26 @@ License №T-0084-08 from 2021-04-26`;
                                     guestNightsPerRoomType[roomType] = 0;
                                   }
                                   guestNightsPerRoomType[roomType] += nights;
+
+                                  // Track date groups for accurate room-nights calculation
+                                  const dateKey = `${checkIn.getTime()}-${checkOut.getTime()}`;
+                                  if (!guestDateGroupsPerRoomType[roomType]) guestDateGroupsPerRoomType[roomType] = {};
+                                  if (!guestDateGroupsPerRoomType[roomType][dateKey]) {
+                                    guestDateGroupsPerRoomType[roomType][dateKey] = { count: 0, nights };
+                                  }
+                                  guestDateGroupsPerRoomType[roomType][dateKey].count += 1;
+
+                                  // Track extra nights for tourists who arrive before acc.checkInDate
+                                  const extraNights = Math.max(0, Math.round((accCheckIn - checkIn) / (1000 * 60 * 60 * 24)));
+                                  if (extraNights > 0) {
+                                    if (!extraNightGroupsPerRoomType[roomType]) extraNightGroupsPerRoomType[roomType] = {};
+                                    const extraKey = extraNights.toString();
+                                    if (!extraNightGroupsPerRoomType[roomType][extraKey]) {
+                                      extraNightGroupsPerRoomType[roomType][extraKey] = { count: 0, extraNights, names: [] };
+                                    }
+                                    extraNightGroupsPerRoomType[roomType][extraKey].count += 1;
+                                    extraNightGroupsPerRoomType[roomType][extraKey].names.push(tourist.lastName || 'Guest');
+                                  }
 
                                   // Track details for breakdown
                                   if (!touristDetails[roomType]) {
@@ -17256,8 +17283,16 @@ License №T-0084-08 from 2021-04-26`;
                                   if (normalizedRoomType === 'PAX') {
                                     roomNights = guestNights;
                                   } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-                                    const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
-                                    roomNights = Math.ceil(guestCount / 2) * avgNights;
+                                    // Group tourists by (checkIn, checkOut) to handle mixed stay lengths correctly
+                                    // e.g. 1 early-arrival DBL×5n + 2 DBL×2n = 5+4 = 9 room-nights (not avg 9)
+                                    const dateGroups = guestDateGroupsPerRoomType[normalizedRoomType] || {};
+                                    const groupEntries = Object.values(dateGroups);
+                                    if (groupEntries.length > 0) {
+                                      roomNights = groupEntries.reduce((sum, g) => sum + Math.ceil(g.count / 2) * g.nights, 0);
+                                    } else {
+                                      const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
+                                      roomNights = Math.ceil(guestCount / 2) * avgNights;
+                                    }
                                   } else { // SNGL
                                     roomNights = guestNights;
                                   }
@@ -17265,15 +17300,47 @@ License №T-0084-08 from 2021-04-26`;
                                   const roomTypeCost = roomNights * pricePerNight;
                                   totalCost += roomTypeCost;
 
-                                  // Add to breakdown
+                                  // Compute extra room-nights from early arrivals (arrive before acc.checkInDate)
+                                  const extraGroups = extraNightGroupsPerRoomType[normalizedRoomType] || {};
+                                  let extraRoomNights = 0;
+                                  const extraNightDetails = [];
+                                  Object.values(extraGroups).forEach(g => {
+                                    let grpRoomNights;
+                                    if (normalizedRoomType === 'DBL' || normalizedRoomType === 'TWN') {
+                                      grpRoomNights = Math.ceil(g.count / 2) * g.extraNights;
+                                    } else {
+                                      grpRoomNights = g.count * g.extraNights;
+                                    }
+                                    extraRoomNights += grpRoomNights;
+                                    g.names.forEach(name => extraNightDetails.push({
+                                      name, nights: g.extraNights,
+                                      checkIn: '—', checkOut: '—'
+                                    }));
+                                  });
+                                  const regularRoomNights = roomNights - extraRoomNights;
+
+                                  // Add regular entry to breakdown
                                   calculationBreakdown.push({
                                     roomType: normalizedRoomType,
-                                    roomNights: roomNights,
+                                    roomNights: regularRoomNights,
                                     pricePerNight: pricePerNight,
-                                    totalCost: roomTypeCost,
+                                    totalCost: regularRoomNights * pricePerNight,
                                     guestNights: guestNights,
                                     details: touristDetails[normalizedRoomType] || []
                                   });
+
+                                  // Add extra night entry if any early-arrival tourists
+                                  if (extraRoomNights > 0) {
+                                    calculationBreakdown.push({
+                                      roomType: normalizedRoomType,
+                                      roomNights: extraRoomNights,
+                                      pricePerNight: pricePerNight,
+                                      totalCost: extraRoomNights * pricePerNight,
+                                      guestNights: 0,
+                                      isExtraNight: true,
+                                      details: extraNightDetails
+                                    });
+                                  }
 
                                   // Update currency from room type
                                   const hotelRoomType = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
@@ -17281,6 +17348,48 @@ License №T-0084-08 from 2021-04-26`;
                                     currency = hotelRoomType.currency;
                                   }
                                 });
+
+                                // Ранний заезд fee: +0.5 night per tourist with "Ранний заезд" in remarks/notes
+                                // Only at first accommodation (uses outer isFirstAccommodation = acc.id === firstAccId)
+                                if (!isPAX && isFirstAccommodation && accTourists.length > 0 && acc.rooms?.length > 0 && booking?.status !== 'CANCELLED') {
+                                  const earlyByRoomType = {};
+                                  const earlyNamesByRoomType = {};
+                                  accTourists.forEach(t => {
+                                    const _rlNote = (t.accommodationRoomingList || []).find(e => parseInt(e.accommodationId) === parseInt(acc.id))?.notes || '';
+                                    if (!(t.remarks || '').toLowerCase().includes('ранний заезд') && !_rlNote.toLowerCase().includes('ранний заезд')) return;
+                                    let rt = ((t.accommodationRoomingList || []).find(e => parseInt(e.accommodationId) === parseInt(acc.id))?.roomPreference || t.roomPreference || '').toUpperCase();
+                                    if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
+                                    if (rt === 'TWIN') rt = 'TWN';
+                                    if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
+                                    if (!earlyByRoomType[rt]) { earlyByRoomType[rt] = 0; earlyNamesByRoomType[rt] = []; }
+                                    earlyByRoomType[rt]++;
+                                    earlyNamesByRoomType[rt].push(t.lastName || 'Guest');
+                                  });
+                                  const _rlConsumedTypes = {};
+                                  acc.rooms.forEach(room => {
+                                    let rt = room.roomTypeCode?.toUpperCase();
+                                    if (rt === 'DOUBLE') rt = 'DBL';
+                                    if (rt === 'TWIN') rt = 'TWN';
+                                    if (rt === 'SINGLE') rt = 'SNGL';
+                                    if (!earlyByRoomType[rt] || _rlConsumedTypes[rt]) return;
+                                    _rlConsumedTypes[rt] = true;
+                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                    if (!pricePerNight) return;
+                                    const touristCount = earlyByRoomType[rt];
+                                    const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
+                                    const surcharge = earlyRooms * 0.5 * pricePerNight;
+                                    totalCost += surcharge;
+                                    calculationBreakdown.push({
+                                      roomType: rt,
+                                      roomNights: earlyRooms * 0.5,
+                                      pricePerNight,
+                                      totalCost: surcharge,
+                                      guestNights: 0,
+                                      isEarlyFee: true,
+                                      details: (earlyNamesByRoomType[rt] || []).map(name => ({ name }))
+                                    });
+                                  });
+                                }
 
                                 usedRoomingList = true;
                               }
@@ -17291,9 +17400,38 @@ License №T-0084-08 from 2021-04-26`;
                                 totalGuests = acc.totalGuests || 0;
                                 totalCost = parseFloat(acc.totalCost) || 0;
 
+                                // MANUAL MODE: acc.totalGuests===0 means saved in manual mode
+                                // Use saved totalCost + build breakdown from room rows directly (no tourists needed)
+                                const isManualMode = acc.totalGuests === 0 && acc.totalCost > 0 && acc.rooms?.length > 0;
+                                if (isManualMode) {
+                                  const _accYear4 = new Date(acc.checkInDate || Date.now()).getFullYear();
+                                  // Reset totalRooms — compute from room rows only (don't add onto acc.totalRooms)
+                                  totalRooms = 0;
+                                  acc.rooms.forEach(room => {
+                                    let rt = room.roomTypeCode?.toUpperCase();
+                                    if (rt === 'DOUBLE') rt = 'DBL'; if (rt === 'TWIN') rt = 'TWN'; if (rt === 'SINGLE') rt = 'SNGL';
+                                    const roomCount = parseInt(room.roomsCount) || 0;
+                                    const roomNights = parseFloat(room.nights) || acc.nights || 1;
+                                    const _ht4 = acc.hotel?.roomTypes?.find(t => t.name === room.roomTypeCode);
+                                    const _yp4 = _ht4?.yearlyPrices?.find(yp => yp.year === _accYear4);
+                                    const pricePerNight = parseFloat(room.pricePerNight) || _yp4?.pricePerNight || _ht4?.pricePerNight || 0;
+                                    if (!rt || roomCount === 0 || pricePerNight === 0) return;
+                                    const rn = roomCount * roomNights;
+                                    if (!isPAX) totalRooms += roomCount;
+                                    calculationBreakdown.push({
+                                      roomType: rt, roomNights: rn, pricePerNight,
+                                      totalCost: rn * pricePerNight, guestNights: rn,
+                                      details: []
+                                    });
+                                    const _hrt4 = acc.hotel?.roomTypes?.find(t => t.name === room.roomTypeCode);
+                                    if (_hrt4?.currency) currency = _hrt4.currency;
+                                  });
+                                  // Use saved totalCost (don't recalculate from breakdown)
+                                }
+
                                 // CRITICAL: Populate calculationBreakdown even when using saved values
                                 // This ensures "Hisob-kitob tafsilotlari" section always appears
-                                if (accTourists && accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
+                                if (!isManualMode && accTourists && accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
                                   const accCheckIn = new Date(acc.checkInDate);
                                   accCheckIn.setHours(0, 0, 0, 0);
                                   const accCheckOut = new Date(acc.checkOutDate);
@@ -17302,6 +17440,8 @@ License №T-0084-08 from 2021-04-26`;
                                   // Calculate guest-nights per room type for breakdown display
                                   const guestNightsPerRoomType = {};
                                   const guestCountPerRoomType = {};
+                                  const guestDateGroupsPerRoomType = {}; // roomType -> {dateKey -> {count, nights}}
+                                  const extraNightGroupsPerRoomType = {}; // roomType -> {extraNights -> {count, extraNights, names[]}}
                                   const touristDetails = {};
 
                                   accTourists.forEach(tourist => {
@@ -17334,6 +17474,26 @@ License №T-0084-08 from 2021-04-26`;
                                     guestNightsPerRoomType[roomType] += nights;
                                     guestCountPerRoomType[roomType] += 1;
 
+                                    // Track date groups for accurate room-nights calculation
+                                    const dateKey = `${checkIn.getTime()}-${checkOut.getTime()}`;
+                                    if (!guestDateGroupsPerRoomType[roomType]) guestDateGroupsPerRoomType[roomType] = {};
+                                    if (!guestDateGroupsPerRoomType[roomType][dateKey]) {
+                                      guestDateGroupsPerRoomType[roomType][dateKey] = { count: 0, nights };
+                                    }
+                                    guestDateGroupsPerRoomType[roomType][dateKey].count += 1;
+
+                                    // Track extra nights for tourists who arrive before acc.checkInDate
+                                    const extraNights = Math.max(0, Math.round((accCheckIn - checkIn) / (1000 * 60 * 60 * 24)));
+                                    if (extraNights > 0) {
+                                      if (!extraNightGroupsPerRoomType[roomType]) extraNightGroupsPerRoomType[roomType] = {};
+                                      const extraKey = extraNights.toString();
+                                      if (!extraNightGroupsPerRoomType[roomType][extraKey]) {
+                                        extraNightGroupsPerRoomType[roomType][extraKey] = { count: 0, extraNights, names: [] };
+                                      }
+                                      extraNightGroupsPerRoomType[roomType][extraKey].count += 1;
+                                      extraNightGroupsPerRoomType[roomType][extraKey].names.push(tourist.lastName || 'Guest');
+                                    }
+
                                     if (!touristDetails[roomType]) {
                                       touristDetails[roomType] = [];
                                     }
@@ -17360,23 +17520,60 @@ License №T-0084-08 from 2021-04-26`;
                                     if (normalizedRoomType === 'PAX') {
                                       roomNights = guestNights;
                                     } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-                                      const guestCount = guestCountPerRoomType[normalizedRoomType] || 0;
-                                      const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
-                                      roomNights = Math.ceil(guestCount / 2) * avgNights;
+                                      const dateGroups = guestDateGroupsPerRoomType[normalizedRoomType] || {};
+                                      const groupEntries = Object.values(dateGroups);
+                                      if (groupEntries.length > 0) {
+                                        roomNights = groupEntries.reduce((sum, g) => sum + Math.ceil(g.count / 2) * g.nights, 0);
+                                      } else {
+                                        const guestCount = guestCountPerRoomType[normalizedRoomType] || 0;
+                                        const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
+                                        roomNights = Math.ceil(guestCount / 2) * avgNights;
+                                      }
                                     } else {
                                       roomNights = guestNights;
                                     }
 
                                     const roomTypeCost = roomNights * pricePerNight;
 
+                                    // Compute extra room-nights from early arrivals
+                                    const extraGroups = extraNightGroupsPerRoomType[normalizedRoomType] || {};
+                                    let extraRoomNights = 0;
+                                    const extraNightDetails = [];
+                                    Object.values(extraGroups).forEach(g => {
+                                      let grpRoomNights;
+                                      if (normalizedRoomType === 'DBL' || normalizedRoomType === 'TWN') {
+                                        grpRoomNights = Math.ceil(g.count / 2) * g.extraNights;
+                                      } else {
+                                        grpRoomNights = g.count * g.extraNights;
+                                      }
+                                      extraRoomNights += grpRoomNights;
+                                      g.names.forEach(name => extraNightDetails.push({
+                                        name, nights: g.extraNights,
+                                        checkIn: '—', checkOut: '—'
+                                      }));
+                                    });
+                                    const regularRoomNights = roomNights - extraRoomNights;
+
                                     calculationBreakdown.push({
                                       roomType: normalizedRoomType,
-                                      roomNights: roomNights,
+                                      roomNights: regularRoomNights,
                                       pricePerNight: pricePerNight,
-                                      totalCost: roomTypeCost,
+                                      totalCost: regularRoomNights * pricePerNight,
                                       guestNights: guestNights,
                                       details: touristDetails[normalizedRoomType] || []
                                     });
+
+                                    if (extraRoomNights > 0) {
+                                      calculationBreakdown.push({
+                                        roomType: normalizedRoomType,
+                                        roomNights: extraRoomNights,
+                                        pricePerNight: pricePerNight,
+                                        totalCost: extraRoomNights * pricePerNight,
+                                        guestNights: 0,
+                                        isExtraNight: true,
+                                        details: extraNightDetails
+                                      });
+                                    }
 
                                     const hotelRoomType = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
                                     if (hotelRoomType?.currency) {
@@ -17387,45 +17584,11 @@ License №T-0084-08 from 2021-04-26`;
                                 }
 
                                 // Recalculate totalCost from breakdown if we have breakdown items (uses current prices)
-                                if (calculationBreakdown.length > 0) {
+                                // Skip override in manual mode — use saved totalCost
+                                if (!isManualMode && calculationBreakdown.length > 0) {
                                   totalCost = calculationBreakdown.reduce((sum, item) => sum + item.totalCost, 0);
                                 }
 
-                                // Early check-in surcharge: +0.5 night per room with "Ранний заезд"
-                                if (accTourists.length > 0 && acc.rooms?.length > 0 && booking?.status !== 'CANCELLED') {
-                                  const earlyByRoomType = {};
-                                  accTourists.forEach(t => {
-                                    if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
-                                    let rt = (t.roomPreference || '').toUpperCase();
-                                    if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
-                                    if (rt === 'TWIN') rt = 'TWN';
-                                    if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
-                                    earlyByRoomType[rt] = (earlyByRoomType[rt] || 0) + 1;
-                                  });
-                                  const consumedEarlyTypes = {};
-                                  acc.rooms.forEach(room => {
-                                    let rt = room.roomTypeCode?.toUpperCase();
-                                    if (rt === 'DOUBLE') rt = 'DBL';
-                                    if (rt === 'TWIN') rt = 'TWN';
-                                    if (rt === 'SINGLE') rt = 'SNGL';
-                                    if (!earlyByRoomType[rt] || consumedEarlyTypes[rt]) return;
-                                    consumedEarlyTypes[rt] = true;
-                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
-                                    if (!pricePerNight) return;
-                                    const touristCount = earlyByRoomType[rt];
-                                    const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
-                                    const surcharge = earlyRooms * 0.5 * pricePerNight;
-                                    totalCost += surcharge;
-                                    calculationBreakdown.push({
-                                      roomType: `${rt} (Ранний заезд)`,
-                                      roomNights: earlyRooms * 0.5,
-                                      pricePerNight,
-                                      totalCost: surcharge,
-                                      guestNights: earlyRooms * 0.5,
-                                      details: []
-                                    });
-                                  });
-                                }
 
                                 // If still 0, calculate from rooms
                                 if (totalCost === 0 && acc.rooms?.length > 0) {
@@ -17448,6 +17611,54 @@ License №T-0084-08 from 2021-04-26`;
                                     }
                                   });
                                 }
+                              }
+
+                              // Ранний заезд fee: +0.5 × pricePerNight per room
+                              // ONLY for tourists with "Ранний заезд" in their remarks or rooming list notes
+                              // ONLY at the FIRST accommodation (uses outer isFirstAccommodation = acc.id === firstAccId)
+                              if (!isPAX && isFirstAccommodation && accTourists.length > 0 && acc.rooms?.length > 0 && booking?.status !== 'CANCELLED') {
+                                const earlyByRoomType = {};
+                                const earlyNamesByRoomType = {};
+                                accTourists.forEach(t => {
+                                  const _rlNote2 = (t.accommodationRoomingList || []).find(e => parseInt(e.accommodationId) === parseInt(acc.id))?.notes || '';
+                                  if (!(t.remarks || '').toLowerCase().includes('ранний заезд') && !_rlNote2.toLowerCase().includes('ранний заезд')) return;
+                                  let rt = ((t.accommodationRoomingList || []).find(e => parseInt(e.accommodationId) === parseInt(acc.id))?.roomPreference || t.roomPreference || '').toUpperCase();
+                                  if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
+                                  if (rt === 'TWIN') rt = 'TWN';
+                                  if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
+                                  earlyByRoomType[rt] = (earlyByRoomType[rt] || 0) + 1;
+                                  if (!earlyNamesByRoomType[rt]) earlyNamesByRoomType[rt] = [];
+                                  earlyNamesByRoomType[rt].push(t.lastName || 'Guest');
+                                });
+                                const consumedEarlyTypes = {};
+                                acc.rooms.forEach(room => {
+                                  let rt = room.roomTypeCode?.toUpperCase();
+                                  if (rt === 'DOUBLE') rt = 'DBL';
+                                  if (rt === 'TWIN') rt = 'TWN';
+                                  if (rt === 'SINGLE') rt = 'SNGL';
+                                  if (!earlyByRoomType[rt] || consumedEarlyTypes[rt]) return;
+                                  consumedEarlyTypes[rt] = true;
+                                  const pricePerNight = parseFloat(room.pricePerNight) || getEffectiveRoomPrice(room, acc);
+                                  if (!pricePerNight) return;
+                                  const touristCount = earlyByRoomType[rt];
+                                  const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
+                                  const surcharge = earlyRooms * 0.5 * pricePerNight;
+                                  totalCost += surcharge;
+                                  calculationBreakdown.push({
+                                    roomType: `${rt} (Ранний заезд)`,
+                                    roomNights: earlyRooms * 0.5,
+                                    pricePerNight,
+                                    totalCost: surcharge,
+                                    guestNights: 0,
+                                    isEarlyFee: true,
+                                    details: (earlyNamesByRoomType[rt] || []).map(name => ({
+                                      name,
+                                      nights: '×0.5',
+                                      checkIn: '—',
+                                      checkOut: '—'
+                                    }))
+                                  });
+                                });
                               }
 
                               // Final currency check - if total cost is high, it's UZS
@@ -17562,19 +17773,24 @@ License №T-0084-08 from 2021-04-26`;
                                       </summary>
                                       <div className="mt-2 p-3 md:p-4 bg-white border border-gray-200 rounded-lg space-y-2 md:space-y-3">
                                         {calculationBreakdown.map((item, idx) => (
-                                          <div key={idx} className="pb-2 md:pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                                          <div key={idx} className={`pb-2 md:pb-3 border-b border-gray-100 last:border-0 last:pb-0 ${item.isEarlyFee ? 'bg-orange-50 rounded-lg px-2 py-1' : item.isExtraNight ? 'bg-teal-50 rounded-lg px-2 py-1' : ''}`}>
                                             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-1 md:gap-2 mb-2">
                                               <div className="flex-1">
-                                                <span className="font-bold text-gray-900 text-sm md:text-base">{item.roomType}:</span>
+                                                <span className={`font-bold text-sm md:text-base ${item.isEarlyFee ? 'text-orange-700' : item.isExtraNight ? 'text-teal-700' : 'text-gray-900'}`}>
+                                                  {item.isEarlyFee ? '🌅 ' : item.isExtraNight ? '🌙 ' : ''}{item.roomType}{item.isExtraNight ? ' (Extra night)' : ''}:
+                                                </span>
                                                 <span className="text-xs md:text-sm text-gray-600 ml-2 block md:inline">
-                                                  {item.roomNights.toFixed(1)} room-nights × {currency === 'UZS' ? (
+                                                  {item.isEarlyFee
+                                                    ? `${item.roomNights.toFixed(1)} kecha (0.5 × ${item.details.length} mehmon)`
+                                                    : `${item.roomNights.toFixed(1)} room-nights`
+                                                  } × {currency === 'UZS' ? (
                                                     <>{item.pricePerNight.toLocaleString('ru-RU')} {currencySymbol}</>
                                                   ) : (
                                                     <>{currencySymbol}{item.pricePerNight.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
                                                   )}
                                                 </span>
                                               </div>
-                                              <span className="font-bold text-blue-700 text-sm md:text-base">
+                                              <span className={`font-bold text-sm md:text-base ${item.isEarlyFee ? 'text-orange-600' : item.isExtraNight ? 'text-teal-700' : 'text-blue-700'}`}>
                                                 {currency === 'UZS' ? (
                                                   <>{item.totalCost.toLocaleString('ru-RU')} {currencySymbol}</>
                                                 ) : (
@@ -17584,16 +17800,33 @@ License №T-0084-08 from 2021-04-26`;
                                             </div>
                                             {item.details.length > 0 && (
                                               <div className="ml-2 md:ml-4 space-y-1">
-                                                {item.details.slice(0, 3).map((guest, gidx) => (
-                                                  <div key={gidx} className="text-xs text-gray-500">
-                                                    • {guest.name}: {guest.nights} nights ({guest.checkIn} - {guest.checkOut})
-                                                  </div>
-                                                ))}
-                                                {item.details.length > 3 && (
-                                                  <div className="text-xs text-gray-400 italic">
-                                                    ... va yana {item.details.length - 3} mehmon
-                                                  </div>
-                                                )}
+                                                {item.isEarlyFee
+                                                  ? item.details.map((guest, gidx) => (
+                                                      <div key={gidx} className="text-xs text-orange-600">
+                                                        • {guest.name}: ранний заезд (+0.5 kecha fee)
+                                                      </div>
+                                                    ))
+                                                  : item.isExtraNight
+                                                  ? item.details.map((guest, gidx) => (
+                                                      <div key={gidx} className="text-xs text-teal-600">
+                                                        • {guest.name}: {guest.nights} extra kecha (gruppa kelishidan oldin)
+                                                      </div>
+                                                    ))
+                                                  : (
+                                                    <>
+                                                      {item.details.slice(0, 3).map((guest, gidx) => (
+                                                        <div key={gidx} className="text-xs text-gray-500">
+                                                          • {guest.name}: {guest.nights} nights ({guest.checkIn} - {guest.checkOut})
+                                                        </div>
+                                                      ))}
+                                                      {item.details.length > 3 && (
+                                                        <div className="text-xs text-gray-400 italic">
+                                                          ... va yana {item.details.length - 3} mehmon
+                                                        </div>
+                                                      )}
+                                                    </>
+                                                  )
+                                                }
                                               </div>
                                             )}
                                           </div>
