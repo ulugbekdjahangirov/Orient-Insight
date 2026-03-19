@@ -347,12 +347,17 @@ const PREDEFINED_RAILWAYS = [
   }
 ];
 
-// Helper: get effective room price from hotel's current data (yearly override → base → saved)
+// Helper: get effective room price.
+// Priority: saved room.pricePerNight (set at accommodation creation, already includes VAT+tax).
+// Fallback: recalculate from hotel master data (only when pricePerNight not yet saved).
 function getEffectiveRoomPrice(room, acc) {
+  if (room.pricePerNight && parseFloat(room.pricePerNight) > 0) {
+    return parseFloat(room.pricePerNight);
+  }
   const year = new Date(acc.checkInDate || Date.now()).getFullYear();
   const hotelRT = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
   const yearlyP = hotelRT?.yearlyPrices?.find(yp => yp.year === year);
-  if (!hotelRT) return parseFloat(room.pricePerNight) || 0;
+  if (!hotelRT) return 0;
   const basePrice = yearlyP?.pricePerNight ?? hotelRT.pricePerNight ?? 0;
   const vatIncluded = yearlyP?.vatIncluded ?? hotelRT.vatIncluded ?? false;
   const touristTaxEnabled = yearlyP?.touristTaxEnabled ?? hotelRT.touristTaxEnabled ?? false;
