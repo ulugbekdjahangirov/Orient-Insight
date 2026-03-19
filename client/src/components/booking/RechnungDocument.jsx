@@ -789,7 +789,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Update invoice totalAmount and items when items change
   useEffect(() => {
-    if (invoice?.id && invoiceItems.length > 0) {
+    // Skip auto-save when firma is selected — locked invoices save via the lock flow only
+    if (invoice?.id && invoiceItems.length > 0 && !invoice?.firma) {
       // For Neue Rechnung (showThreeRows), save Gesamtbetrag (Total - Already Paid)
       // For regular Rechnung, save Total
       const amountToSave = showThreeRows ? calculateGesamtbetrag() : calculateTotal();

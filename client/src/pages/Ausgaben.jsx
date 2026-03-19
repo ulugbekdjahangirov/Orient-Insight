@@ -929,10 +929,11 @@ export default function Ausgaben() {
     else if (activeExpenseTab === 'railways') {
       const railwayBookings = bookingsDetailedData.filter(b => (b.railways?.length > 0)||(b.expenses?.railway||0)>0);
       const allRailwayRows = railwayBookings.flatMap(b => (b.railways||[]).filter(r=>(r.price||0)>0).map(r=>({...r, bookingId:b.bookingId, bookingName:b.bookingName})));
-      headers = ['#', 'Booking', "Yo'nalish", 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"];
+      headers = ['#', 'Booking', "Yo'nalish", 'Sana', 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"];
       rows = allRailwayRows.map((r, i) => [
         i+1, r.bookingName,
         r.departure && r.arrival ? `${r.departure} → ${r.arrival}` : r.route||'—',
+        r.date ? formatDate(r.date) : '—',
         r.trainName||r.trainNumber||'—',
         r.pax||0,
         r.pax>0&&r.price>0 ? Math.round(r.price/r.pax) : 0,
@@ -942,7 +943,7 @@ export default function Ausgaben() {
       const totalPaxEx = allRailwayRows.reduce((s,r)=>s+(r.pax||0),0);
       const grandTotalEx = allRailwayRows.reduce((s,r)=>s+(r.price||0),0);
       const paidTotalEx = allRailwayRows.filter(r=>r.paid).reduce((s,r)=>s+(r.price||0),0);
-      footerRow = ['', 'TOTAL', '', '', totalPaxEx, '', grandTotalEx, `To'landi: ${paidTotalEx}`];
+      footerRow = ['', 'TOTAL', '', '', '', totalPaxEx, '', grandTotalEx, `To'landi: ${paidTotalEx}`];
       numericCols = [4,5,6];
     }
 
@@ -1114,10 +1115,11 @@ export default function Ausgaben() {
     else if (activeExpenseTab === 'railways') {
       const railwayBookings = bookingsDetailedData.filter(b => (b.railways?.length > 0)||(b.expenses?.railway||0)>0);
       const allRows = railwayBookings.flatMap(b => (b.railways||[]).filter(r=>(r.price||0)>0).map(r=>({...r, bookingName:b.bookingName})));
-      head = [['#', 'Booking', "Yo'nalish", 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"]];
+      head = [['#', 'Booking', "Yo'nalish", 'Sana', 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"]];
       body = allRows.map((r, i) => [
         i+1, r.bookingName,
         r.departure && r.arrival ? `${r.departure} → ${r.arrival}` : r.route||'—',
+        r.date ? formatDate(r.date) : '—',
         r.trainName||r.trainNumber||'—',
         r.pax||'—',
         fmtN(r.pax>0&&r.price>0 ? Math.round(r.price/r.pax) : 0),
@@ -1127,7 +1129,7 @@ export default function Ausgaben() {
       const totalPax = allRows.reduce((s,r)=>s+(r.pax||0),0);
       const grandTotal = allRows.reduce((s,r)=>s+(r.price||0),0);
       const paidTotal = allRows.filter(r=>r.paid).reduce((s,r)=>s+(r.price||0),0);
-      foot = [['', 'TOTAL', '', '', totalPax, '', fmtN(grandTotal), `${fmtN(paidTotal)}`]];
+      foot = [['', 'TOTAL', '', '', '', totalPax, '', fmtN(grandTotal), `${fmtN(paidTotal)}`]];
     }
 
     return { head, body, foot };
@@ -2459,19 +2461,21 @@ export default function Ausgaben() {
                             <table className="w-full text-xs table-fixed">
                               <colgroup>
                                 <col style={{ width: '3%' }} />
+                                <col style={{ width: '8%' }} />
+                                <col style={{ width: '18%' }} />
                                 <col style={{ width: '9%' }} />
-                                <col style={{ width: '20%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '6%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '5%' }} />
+                                <col style={{ width: '11%' }} />
+                                <col style={{ width: '13%' }} />
+                                <col style={{ width: '11%' }} />
                               </colgroup>
                               <thead>
                                 <tr style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
                                   <th className="px-3 py-3.5 text-center text-white font-bold">#</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Booking</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Yo'nalish</th>
+                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Sana</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Poyezd</th>
                                   <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700">PAX</th>
                                   <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Bilet narxi</th>
@@ -2493,6 +2497,9 @@ export default function Ausgaben() {
                                       </td>
                                       <td className="px-3 py-2.5 border-r border-slate-100 text-slate-600">
                                         {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || row.name || '—'}
+                                      </td>
+                                      <td className="px-3 py-2.5 border-r border-slate-100 text-slate-700 whitespace-nowrap">
+                                        {row.date ? formatDate(row.date) : '—'}
                                       </td>
                                       <td className="px-3 py-2.5 border-r border-slate-100">
                                         <span className="text-slate-700 font-medium">{row.trainName || row.trainNumber || '—'}</span>
@@ -2537,9 +2544,16 @@ export default function Ausgaben() {
                                       {formatNumber(row.price || 0)} UZS
                                     </span>
                                   </div>
-                                  {/* Row 2: Route */}
-                                  <div className="text-sm font-semibold text-slate-700">
-                                    {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || '—'}
+                                  {/* Row 2: Route + Date */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-semibold text-slate-700">
+                                      {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || '—'}
+                                    </span>
+                                    {row.date && (
+                                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                        {formatDate(row.date)}
+                                      </span>
+                                    )}
                                   </div>
                                   {/* Row 3: Train + PAX + per-ticket | To'landi button */}
                                   <div className="flex items-center justify-between gap-2">
