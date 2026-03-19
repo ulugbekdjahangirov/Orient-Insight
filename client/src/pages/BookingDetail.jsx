@@ -17342,7 +17342,7 @@ License №T-0084-08 from 2021-04-26`;
 
                                   // Populate breakdown from saved rooms data
                                   acc.rooms?.forEach(room => {
-                                    const pricePerNight = getEffectiveRoomPrice(room, acc);
+                                    const pricePerNight = parseFloat(room.pricePerNight) || getEffectiveRoomPrice(room, acc);
                                     let normalizedRoomType = room.roomTypeCode?.toUpperCase();
                                     if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
                                     if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
