@@ -9446,7 +9446,7 @@ export default function BookingDetail() {
                 <div className="space-y-6">
                   {/* International Flights Section */}
                   {(() => {
-                    const internationalFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'INTERNATIONAL') : [];
+                    const internationalFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'INTERNATIONAL').sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)) : [];
 
                     if (internationalFlights.length === 0) return null;
 
@@ -9571,7 +9571,7 @@ export default function BookingDetail() {
 
                   {/* Domestic Flights Section */}
                   {(() => {
-                    const domesticFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'DOMESTIC') : [];
+                    const domesticFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'DOMESTIC').sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)) : [];
 
                     if (domesticFlights.length === 0) return null;
 
