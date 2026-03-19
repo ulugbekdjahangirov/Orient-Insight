@@ -78,7 +78,25 @@ class EmailImportProcessor {
       const isDocx = !isExcel && !isPdf && (fname.endsWith('.docx') || fname.endsWith('.doc') || (emailImport.attachmentType || '').includes('word'));
 
       // "Booking Overview" Excel — PAX-only update, no tourist import
-      const isBookingOverview = isExcel && (fname.includes('booking overview') || fname.includes('buchungsübersicht'));
+      // Detect by filename OR by content (Reisename + Gebuchte Pax headers = PAX update format)
+      const isBookingOverviewByName = isExcel && (fname.includes('booking overview') || fname.includes('buchungsübersicht'));
+      const isBookingOverviewByContent = isExcel && !isBookingOverviewByName && (() => {
+        try {
+          const XLSX = require('xlsx');
+          const wb = XLSX.read(fileBuffer, { type: 'buffer' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          for (let i = 0; i < Math.min(rows.length, 5); i++) {
+            const row = rows[i].map(c => String(c).trim().toLowerCase());
+            if (row.some(h => h.includes('reisename') || h === 'reise') &&
+                row.some(h => h.includes('pax') || h.includes('gebuchte'))) {
+              return true;
+            }
+          }
+        } catch (e) {}
+        return false;
+      })();
+      const isBookingOverview = isBookingOverviewByName || isBookingOverviewByContent;
       if (isBookingOverview) {
         const rows = this.parseBookingOverviewExcel(fileBuffer);
         if (rows.length === 0) {
@@ -3004,15 +3022,18 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
   mapReisename(reisename) {
     const lower = reisename.toLowerCase();
 
+    const hasKirgiz = lower.includes('kirgis') || lower.includes('kyrgyz') || lower.includes('kirgistan');
+    const hasTajik  = lower.includes('tadschik') || lower.includes('tajik') || lower.includes('tadjik');
+
     const isZA = (lower.includes('turkmenistan') || lower.includes('turkmen')) &&
                  (lower.includes('usbekistan') || lower.includes('uzbekistan')) &&
-                 (lower.includes('tadschikistan') || lower.includes('tajikistan')) &&
+                 hasTajik &&
                  (lower.includes('kasachstan') || lower.includes('kazakhstan')) &&
-                 (lower.includes('kirgistan') || lower.includes('kyrgyzstan'));
+                 hasKirgiz;
 
     const isKAS = !isZA &&
                   (lower.includes('kasachstan') || lower.includes('kazakhstan')) &&
-                  (lower.includes('kirgistan') || lower.includes('kyrgyzstan')) &&
+                  hasKirgiz &&
                   (lower.includes('usbekistan') || lower.includes('uzbekistan'));
 
     const isCO = !isZA && !isKAS &&
@@ -3044,61 +3065,65 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
     const $ = cheerio.load(html);
     const rows = [];
 
-    // Find the table that contains "Reisename" and "Pax"
-    let targetTable = null;
+    // Collect ALL candidate tables (there can be multiple: one per tour type)
+    // Prefer tables with "Reisename"/"Pax" headers; also accept tables with known tour name keywords
+    const targetTables = [];
+    let hasExactMatch = false;
     $('table').each((i, table) => {
-      const text = $(table).text();
-      if (text.toLowerCase().includes('reisename') && text.toLowerCase().includes('pax')) {
-        targetTable = table;
-        return false; // break each()
+      const text = $(table).text().toLowerCase();
+      if (text.includes('reisename') && text.includes('pax')) {
+        targetTables.push(table);
+        hasExactMatch = true;
+      } else if (!hasExactMatch && (text.includes('kasachstan') || text.includes('usbekistan'))) {
+        targetTables.push(table);
       }
     });
 
-    if (!targetTable) {
-      return [];
+    if (targetTables.length === 0) return [];
+
+    for (const targetTable of targetTables) {
+      // Get column headers from first row (th or td)
+      const headerCells = [];
+      $(targetTable).find('tr').first().find('th, td').each((i, el) => {
+        headerCells.push($(el).text().trim().toLowerCase());
+      });
+
+      // Support multiple header name variants
+      const reisIdx = headerCells.findIndex(h =>
+        h.includes('reisename') || h === 'reise' || h === 'tour' || h === 'reise/tour');
+      const vonIdx  = headerCells.findIndex(h =>
+        h === 'von' || h.startsWith('von') || h === 'abfahrt' || h.includes('abfahrt') || h.includes('departure'));
+      const bisIdx  = headerCells.findIndex(h =>
+        h === 'bis' || h.startsWith('bis') || h === 'rückkehr' || h.includes('rückk') || h.includes('ankunft') || h.includes('arrival'));
+      const paxIdx  = headerCells.findIndex(h =>
+        h.includes('pax') || h.includes('buchungen') || h.includes('gebucht'));
+
+      // Fallback: if headers not recognized, assume col 0 = tour name, col 1 = departure, col 2 = return, last col = PAX
+      const effectiveReisIdx = reisIdx >= 0 ? reisIdx : 0;
+      const effectiveVonIdx  = vonIdx  >= 0 ? vonIdx  : 1;
+      const effectiveBisIdx  = bisIdx  >= 0 ? bisIdx  : 2;
+      const effectivePaxIdx  = paxIdx  >= 0 ? paxIdx  : headerCells.length - 1;
+
+      // Parse data rows — skip rows that contain <th> cells (header rows)
+      $(targetTable).find('tr').each((i, row) => {
+        if ($(row).find('th').length > 0) return;
+
+        const cells = $(row).find('td');
+        if (cells.length < 3) return;
+
+        const reisename = $(cells[effectiveReisIdx]).text().trim();
+        const von = $(cells[effectiveVonIdx]).text().trim();
+        const bis = effectiveBisIdx < cells.length ? $(cells[effectiveBisIdx]).text().trim() : null;
+        const paxCell = effectivePaxIdx < cells.length ? cells[effectivePaxIdx] : cells[cells.length - 1];
+        const paxText = $(paxCell).text().trim();
+        const pax = parseInt(paxText, 10);
+
+        if (!reisename || isNaN(pax) || pax < 0) return;
+        if (reisename.length < 3) return;
+
+        rows.push({ reisename, departureDate: von || null, returnDate: bis || null, pax });
+      });
     }
-
-    // Get column headers from first row (th or td)
-    const headerCells = [];
-    $(targetTable).find('tr').first().find('th, td').each((i, el) => {
-      headerCells.push($(el).text().trim().toLowerCase());
-    });
-
-    const reisIdx = headerCells.findIndex(h => h.includes('reisename') || h === 'reise');
-    const vonIdx  = headerCells.findIndex(h => h === 'von' || h.startsWith('von'));
-    const bisIdx  = headerCells.findIndex(h => h === 'bis' || h.startsWith('bis'));
-    // "Gebuchte Pax" or just "Pax"
-    const paxIdx  = headerCells.findIndex(h => h.includes('pax'));
-
-    if (reisIdx === -1 || paxIdx === -1) {
-      return [];
-    }
-
-
-    // Parse data rows — skip any row that contains <th> cells (header rows)
-    $(targetTable).find('tr').each((i, row) => {
-      // Skip header rows (contain <th> cells)
-      if ($(row).find('th').length > 0) return;
-
-      const cells = $(row).find('td');
-      if (cells.length === 0) return;
-
-      // Guard: make sure we have enough cells
-      const maxIdx = Math.max(reisIdx, vonIdx, bisIdx, paxIdx);
-      if (cells.length <= maxIdx) return;
-
-      const reisename = $(cells[reisIdx]).text().trim();
-      const von = vonIdx >= 0 ? $(cells[vonIdx]).text().trim() : null;
-      const bis = bisIdx >= 0 ? $(cells[bisIdx]).text().trim() : null;
-      const paxText = $(cells[paxIdx]).text().trim();
-      const pax = parseInt(paxText, 10);
-
-      if (!reisename || isNaN(pax) || pax < 0) {
-        return;
-      }
-
-      rows.push({ reisename, departureDate: von, returnDate: bis, pax });
-    });
 
     return rows;
   }

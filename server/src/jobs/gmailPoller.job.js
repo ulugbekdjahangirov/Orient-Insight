@@ -75,7 +75,15 @@ async function processNewEmail(messageId) {
     let bodyTableProcessed = false;
     try {
       const html = emailDetails.htmlBody;
-      if (html && html.includes('Reisename') && html.includes('Pax')) {
+      const htmlLower = html ? html.toLowerCase() : '';
+      const hasPaxTable = html && (
+        // Standard format: "Reisename" + "Pax"
+        (html.includes('Reisename') && htmlLower.includes('pax')) ||
+        // Weekly update format: body has tour names + booking count indicators (subject-independent)
+        ((htmlLower.includes('kasachstan') || htmlLower.includes('usbekistan')) &&
+         (htmlLower.includes('abfahrt') || htmlLower.includes('buchungen') || htmlLower.includes('gebucht')))
+      );
+      if (hasPaxTable) {
         const bodyUniqueKey = `${messageId}::BODY_TABLE`;
         const existingBody = await prisma.emailImport.findFirst({
           where: { gmailMessageId: bodyUniqueKey }
@@ -133,6 +141,9 @@ async function processNewEmail(messageId) {
     const attachmentsToProcess = [...excelAttachments, ...pdfAttachments, ...docxAttachments];
 
     if (attachmentsToProcess.length === 0 && !bodyTableProcessed) {
+      // No processable content found — mark as processed so it doesn't loop forever,
+      // but this means emails with unrecognized formats will be silently skipped.
+      // To re-process a skipped email: remove PROCESSED label + mark UNREAD in Gmail.
       await gmailService.markAsProcessed(messageId);
       return;
     }
