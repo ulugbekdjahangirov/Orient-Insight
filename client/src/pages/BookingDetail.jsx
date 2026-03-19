@@ -17731,6 +17731,40 @@ License №T-0084-08 from 2021-04-26`;
                                             </div>
                                           </div>
                                         )}
+                                        {/* Room type inline badges */}
+                                        {!isPAX && acc.rooms?.length > 0 && (() => {
+                                          const rtSummary = {};
+                                          acc.rooms.forEach(room => {
+                                            let rt = (room.roomTypeCode || '').toUpperCase();
+                                            if (rt === 'DOUBLE') rt = 'DBL';
+                                            if (rt === 'TWIN') rt = 'TWN';
+                                            if (rt === 'SINGLE') rt = 'SNGL';
+                                            if (!rt) return;
+                                            rtSummary[rt] = (rtSummary[rt] || 0) + (parseInt(room.roomsCount) || 0);
+                                          });
+                                          const entries = Object.entries(rtSummary).filter(([, cnt]) => cnt > 0);
+                                          if (entries.length === 0) return null;
+                                          const rtStyles = {
+                                            DBL:  { gradient: 'from-blue-400 to-blue-600',   shadow: 'shadow-blue-200',   num: 'text-blue-700',  label: 'text-blue-500' },
+                                            TWN:  { gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-200', num: 'text-emerald-700', label: 'text-emerald-500' },
+                                            SNGL: { gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-200', num: 'text-violet-700', label: 'text-violet-500' },
+                                          };
+                                          return (
+                                            <>
+                                              <div className="w-px h-10 bg-blue-200 mx-1 hidden md:block self-center" />
+                                              {entries.map(([rt, cnt]) => {
+                                                const s = rtStyles[rt] || { gradient: 'from-gray-400 to-gray-600', shadow: 'shadow-gray-200', num: 'text-gray-700', label: 'text-gray-500' };
+                                                return (
+                                                  <div key={rt} className={`flex flex-col items-center justify-center bg-white rounded-2xl shadow-md ${s.shadow} w-[64px] h-[64px] md:w-[80px] md:h-[80px] border border-white flex-shrink-0`}>
+                                                    <span className={`text-[10px] md:text-xs font-extrabold text-white bg-gradient-to-r ${s.gradient} rounded-lg px-2 py-0.5 mb-1 tracking-wide shadow-sm`}>{rt}</span>
+                                                    <span className={`text-lg md:text-2xl font-black ${s.num} leading-none`}>{cnt}</span>
+                                                    <span className={`text-[9px] md:text-[11px] font-bold uppercase tracking-widest ${s.label} mt-0.5`}>rooms</span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </>
+                                          );
+                                        })()}
                                       </div>
 
                                       {/* Right side - Total */}
