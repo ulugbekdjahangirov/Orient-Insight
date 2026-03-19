@@ -7538,6 +7538,60 @@ export default function BookingDetail() {
     loadData();
   };
 
+  // Toggle a remark tag for a tourist (optimistic update + API save)
+  // accId — accommodation id (needed to update rl notes if tag lives there)
+  // currentRlNotes — current AccommodationRoomingList.notes for this tourist+acc
+  const handleTagToggle = async (touristId, tag, accId, currentRlNotes) => {
+    const tourist = tourists.find(t => t.id === touristId);
+    if (!tourist) return;
+    const currentRemarks = tourist.remarks || '';
+    const currentNotes = currentRlNotes || '';
+
+    const hasInRemarks = currentRemarks.toLowerCase().includes(tag.toLowerCase());
+    const hasInNotes = currentNotes.toLowerCase().includes(tag.toLowerCase());
+    const hasTag = hasInRemarks || hasInNotes;
+
+    // Compute new remarks (add or remove)
+    let newRemarks;
+    let newNotes = currentNotes;
+    if (hasTag) {
+      newRemarks = currentRemarks.split('\n').map(l => l.trim()).filter(l => l && !l.toLowerCase().includes(tag.toLowerCase())).join('\n');
+      if (hasInNotes) newNotes = currentNotes.split('\n').filter(l => !l.toLowerCase().includes(tag.toLowerCase())).join('\n').trim();
+    } else {
+      newRemarks = currentRemarks ? currentRemarks + '\n' + tag : tag;
+    }
+
+    // Optimistic update
+    setTourists(prev => prev.map(t => t.id === touristId ? { ...t, remarks: newRemarks } : t));
+    setAccommodationRoomingLists(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(aId => {
+        updated[aId] = (updated[aId] || []).map(t =>
+          t.id === touristId ? { ...t, remarks: newRemarks, rlNotes: parseInt(aId) === parseInt(accId) ? newNotes : t.rlNotes } : t
+        );
+      });
+      return updated;
+    });
+
+    try {
+      await touristsApi.update(id, touristId, { remarks: newRemarks });
+      // If tag was in rl notes, also clear it there
+      if (hasTag && hasInNotes && accId) {
+        await bookingsApi.updateAccommodationRoomingList(id, accId, touristId, { notes: newNotes });
+      }
+    } catch {
+      setTourists(prev => prev.map(t => t.id === touristId ? { ...t, remarks: currentRemarks } : t));
+      setAccommodationRoomingLists(prev => {
+        const reverted = { ...prev };
+        Object.keys(reverted).forEach(aId => {
+          reverted[aId] = (reverted[aId] || []).map(t => t.id === touristId ? { ...t, remarks: currentRemarks, rlNotes: currentNotes } : t);
+        });
+        return reverted;
+      });
+      toast.error('Saqlashda xato');
+    }
+  };
+
   const autoFixAllRoutes = async () => {
 
     const tourTypeCode = booking?.tourType?.code;
@@ -18661,49 +18715,44 @@ License №T-0084-08 from 2021-04-26`;
                                             )}
                                           </div>
 
-                                          {/* Примечание - Show individual dates if different from group */}
+                                          {/* Additional Information — remarks + auto-notes */}
                                           <div className="col-span-2">
                                             {(() => {
-                                              const notes = [];
+                                              const remarks = t.remarks || '';
+                                              const rlNotes = t.rlNotes || '';
 
-                                              // Show hotel-relevant remarks (Ранний заезд/Extra Night) only for first hotel
-                                              if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
-                                                const hotelKws = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
-                                                t.remarks.trim().split('\n').forEach(line => {
-                                                  const l = line.trim();
-                                                  if (!l) return;
-                                                  const kw = hotelKws.find(k => l.toLowerCase().includes(k));
-                                                  if (kw) notes.push(l.slice(l.toLowerCase().indexOf(kw)));
-                                                });
-                                              }
+                                              // Auto-generated date notes
+                                              const autoNotes = [];
+                                              if (touristCheckInDate.getTime() < accCheckIn.getTime())
+                                                autoNotes.push(`Заезд: ${format(touristCheckInDate, 'dd.MM.yyyy')}`);
+                                              if (touristCheckOutDate.getTime() > accCheckOut.getTime())
+                                                autoNotes.push(`Выезд: ${format(touristCheckOutDate, 'dd.MM.yyyy')}`);
+                                              if (isKhivaUzTourist) autoNotes.push('2 Nights');
 
-                                              // Check if early arrival (tourist arrives before group)
-                                              if (touristCheckInDate.getTime() < accCheckIn.getTime()) {
-                                                const earlyDate = format(touristCheckInDate, 'dd.MM.yyyy');
-                                                notes.push(`Заезд: ${earlyDate}`);
-                                              }
+                                              const displayLines = [...(remarks ? remarks.split('\n').map(l => l.trim()).filter(Boolean) : []), ...(rlNotes ? rlNotes.split('\n').map(l => l.trim()).filter(Boolean) : [])];
 
-                                              // Check if late departure (tourist leaves after group)
-                                              if (touristCheckOutDate.getTime() > accCheckOut.getTime()) {
-                                                const lateDate = format(touristCheckOutDate, 'dd.MM.yyyy');
-                                                notes.push(`Выезд: ${lateDate}`);
-                                              }
-
-                                              // Malika Khorazm: UZ tourists stay 2 nights (TM tourists stay 3 nights)
-                                              if (isKhivaUzTourist) {
-                                                notes.push('2 Nights');
-                                              }
-
-                                              return notes.length > 0 ? (
-                                                <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 rounded-lg px-3 py-2 shadow-sm">
-                                                  <div className="text-xs leading-relaxed font-medium space-y-1">
-                                                    {notes.map((note, idx) => (
-                                                      <div key={idx}>{note}</div>
-                                                    ))}
-                                                  </div>
+                                              return (
+                                                <div className="flex flex-col gap-1">
+                                                  {displayLines.length > 0 && (
+                                                    <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 rounded-lg px-3 py-2 text-xs leading-relaxed">
+                                                      {displayLines.map((line, i) => (
+                                                        <div key={i} className="font-medium">{line}</div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {autoNotes.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1">
+                                                      {autoNotes.map((note, idx) => (
+                                                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700 text-[11px] font-medium">
+                                                          📅 {note}
+                                                        </span>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {displayLines.length === 0 && autoNotes.length === 0 && (
+                                                    <span className="text-gray-400 text-xs">-</span>
+                                                  )}
                                                 </div>
-                                              ) : (
-                                                <span className="text-gray-400 text-xs">-</span>
                                               );
                                             })()}
                                           </div>

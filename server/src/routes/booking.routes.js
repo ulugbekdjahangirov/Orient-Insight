@@ -2104,6 +2104,7 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         checkOutDate: checkOutStr,
         roomPreference: entry?.roomPreference || tourist.roomPreference,
         remarks,
+        rlNotes: entry?.notes || '',
         hasAccommodationOverride: !!entry
       };
     });

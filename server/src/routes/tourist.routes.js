@@ -6041,18 +6041,9 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
         if (entry?.checkInDate) {
           touristCheckInDate = new Date(entry.checkInDate);
         } else if (isFirstAccommodation) {
-          // ER/CO: tourist.checkInDate = Germany departure day → +1 to get arrival day
-          // ZA/KAS: tourist.checkInDate = already the arrival/check-in day → use as-is
+          // tourist.checkInDate IS the arrival/check-in date (for ALL tour types)
           const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-          const accDate = new Date(accommodation.checkInDate);
-          if (tDate < accDate) {
-            // ER/CO logic: tourist departs day before hotel check-in
-            const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
-            touristCheckInDate = new Date(Date.UTC(y, m, d + 1));
-          } else {
-            // ZA/KAS logic: tourist.checkInDate IS the hotel check-in date
-            touristCheckInDate = tDate;
-          }
+          touristCheckInDate = tDate;
         } else {
           // For OTHER hotels (not first), use accommodation default dates
           touristCheckInDate = new Date(accommodation.checkInDate);
@@ -6213,30 +6204,22 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
 
             const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
 
-            // Calculate tourist check-in date using EXACT same logic as rooming list API
+            // Calculate tourist check-in date
             let touristCheckInDate;
             if (roomingEntry?.checkInDate) {
               touristCheckInDate = roomingEntry.checkInDate;
             } else if (isFirstAccommodation) {
-              const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-              const accDate = new Date(accommodation.checkInDate);
-              if (tDate < accDate) {
-                const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
-                touristCheckInDate = new Date(Date.UTC(y, m, d + 1)).toISOString();
-              } else {
-                touristCheckInDate = tDate.toISOString();
-              }
+              // tourist.checkInDate IS the arrival date (for all tour types)
+              touristCheckInDate = t.checkInDate ? new Date(t.checkInDate).toISOString() : accommodation.checkInDate;
             } else {
-              // For OTHER hotels (not first), use accommodation default dates
               touristCheckInDate = accommodation.checkInDate;
             }
 
-            // Calculate checkout date using EXACT same logic as rooming list API
+            // Calculate checkout date
             let touristCheckOutDate;
             if (roomingEntry?.checkOutDate) {
               touristCheckOutDate = roomingEntry.checkOutDate;
             } else if (isLastAccommodation && t.checkOutDate) {
-              // CRITICAL: Only use tourist's global checkout date for LAST hotel
               touristCheckOutDate = t.checkOutDate;
             } else {
               touristCheckOutDate = accommodation.checkOutDate;
@@ -6325,25 +6308,17 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
           if (roomingEntry?.checkInDate) {
             touristCheckInDate = roomingEntry.checkInDate;
           } else if (isFirstAccommodation) {
-            const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-            const accDate = new Date(accommodation.checkInDate);
-            if (tDate < accDate) {
-              const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
-              touristCheckInDate = new Date(Date.UTC(y, m, d + 1)).toISOString();
-            } else {
-              touristCheckInDate = tDate.toISOString();
-            }
+            // tourist.checkInDate IS the arrival date (for all tour types)
+            touristCheckInDate = t.checkInDate ? new Date(t.checkInDate).toISOString() : accommodation.checkInDate;
           } else {
-            // For OTHER hotels (not first), use accommodation default dates
             touristCheckInDate = accommodation.checkInDate;
           }
 
-          // Calculate checkout date using EXACT same logic as rooming list API
+          // Calculate checkout date
           let touristCheckOutDate;
           if (roomingEntry?.checkOutDate) {
             touristCheckOutDate = roomingEntry.checkOutDate;
           } else if (isLastAccommodation && t.checkOutDate) {
-            // CRITICAL: Only use tourist's global checkout date for LAST hotel
             touristCheckOutDate = t.checkOutDate;
           } else {
             touristCheckOutDate = accommodation.checkOutDate;
