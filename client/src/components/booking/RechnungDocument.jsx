@@ -1780,23 +1780,32 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                   </tbody>
                 </table>
               ) : (
-              <table className="hidden md:table w-full border-collapse">
+              <table className="hidden md:table w-full border-collapse table-fixed">
+                <colgroup>
+                  <col className="w-10" />
+                  <col />
+                  <col className="w-28" />
+                  <col className="w-20" />
+                  <col className="w-28" />
+                  <col className="w-20" />
+                  <col className="w-20 print:hidden" />
+                </colgroup>
                 <thead>
                   <tr className="bg-amber-100">
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">№</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Beschreibung</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Einzelpreis</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Anzahl</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Gesamtpreis</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Währung</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm print:hidden">Actions</th>
+                    <th className="border border-gray-300 px-2 py-3 text-center font-bold text-gray-900 text-sm">№</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-900 text-sm">Beschreibung</th>
+                    <th className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900 text-sm">Einzelpreis</th>
+                    <th className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900 text-sm">Anzahl</th>
+                    <th className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900 text-sm">Gesamtpreis</th>
+                    <th className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900 text-sm">Währung</th>
+                    <th className="border border-gray-300 px-2 py-3 text-center font-bold text-gray-900 text-sm print:hidden">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => (
                     <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
-                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
-                      <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                      <td className="border border-gray-300 px-2 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
+                      <td className="border border-gray-300 px-2 py-3 text-gray-900">
                         <input
                           id={`desc-${item.id}`}
                           type="text"
@@ -1805,7 +1814,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                           className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all"
                         />
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-semibold">
+                      <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-semibold">
                         <input
                           id={`price-${item.id}`}
                           type="number"
