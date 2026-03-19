@@ -9450,121 +9450,182 @@ export default function BookingDetail() {
 
                     if (internationalFlights.length === 0) return null;
 
+                    // Determine kelish/ketish: if departure city is UZ city → ketish, else → kelish
+                    const uzCities = ['tashkent', 'samarkand', 'bukhara', 'khiva', 'andijan', 'namangan', 'fergana', 'urgench', 'nukus'];
+                    const isKetish = (f) => {
+                      const dep = (f.departure || (f.route || '').split('-')[0] || '').toLowerCase().trim();
+                      return uzCities.some(c => dep.includes(c));
+                    };
+                    const kelishFlights = internationalFlights.filter(f => !isKetish(f));
+                    const ketishFlights = internationalFlights.filter(f => isKetish(f));
+
+                    const renderFlightRows = (list) => list.map((flight, idx) => {
+                      const pax = flight.pax || 0;
+                      const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                      const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                      const rawDetails = flight.paxDetails ? (() => { try { return JSON.parse(flight.paxDetails); } catch { return []; } })() : [];
+                      const nameList = rawDetails.length === 0 ? [] : (typeof rawDetails[0] === 'string' ? rawDetails : rawDetails.flatMap(d => Array.isArray(d.names) ? d.names.flatMap(n => n.split(' | ')) : []));
+                      const displayPax = nameList.length > pax ? nameList.length : pax;
+                      const isExpanded = expandedFlightIds.has(flight.id);
+                      const toggleExpand = () => setExpandedFlightIds(prev => { const s = new Set(prev); s.has(flight.id) ? s.delete(flight.id) : s.add(flight.id); return s; });
+                      return (
+                        <React.Fragment key={flight.id || idx}>
+                          <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                            <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
+                            <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
+                            <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                            <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                            <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button onClick={toggleExpand} className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 transition-colors" title="Yo'lovchilarni ko'rish">
+                                <span>{displayPax > 0 ? displayPax : '-'}</span>
+                                {nameList.length > 0 && <span className="text-xs">{isExpanded ? '▲' : '▼'}</span>}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                            <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && nameList.length > 0 && (
+                            <tr className="bg-blue-50 border-b border-blue-200">
+                              <td colSpan={9} className="px-6 py-3">
+                                <div className="text-xs font-semibold text-blue-700 mb-2">Yo'lovchilar:</div>
+                                <div className="space-y-1">
+                                  {nameList.map((name, ni) => (
+                                    <div key={ni} className="flex items-center gap-2 text-xs">
+                                      <span className="text-gray-400 font-mono w-5 text-right flex-shrink-0">{ni + 1}.</span>
+                                      <span className="text-gray-800">{name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    });
+
+                    const renderFlightMobileCards = (list) => list.map((flight, idx) => {
+                      const pax = flight.pax || 0;
+                      const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                      return (
+                        <div key={flight.id || idx} className="bg-white rounded-2xl border border-blue-200 p-4 shadow-sm">
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-black text-blue-900 text-base">{flight.flightNumber || '-'}</div>
+                              <div className="text-sm text-gray-700 font-semibold mt-0.5 truncate">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <button onClick={() => editFlight(flight)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                              <button onClick={() => deleteFlight(flight.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
+                            <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-blue-700 text-base">{pax > 0 ? pax : '-'}</span></div>
+                            <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{flight.departureTime || '-'}</span></div>
+                            <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{flight.arrivalTime || '-'}</span></div>
+                            {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-blue-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-blue-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                          </div>
+                        </div>
+                      );
+                    });
+
+                    const tableHead = (
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                          <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
+                        </tr>
+                      </thead>
+                    );
+
                     return (
                       <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <h3 className="text-lg md:text-xl font-black text-blue-900 mb-3 md:mb-4 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-blue-900 mb-4 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                             <Plane className="w-4 h-4 text-white" />
                           </div>
                           International Flights
                         </h3>
 
-                        {internationalFlights.length > 0 && (
-                          <>
-                            {/* Mobile cards */}
-                            <div className="space-y-3 md:hidden">
-                              {internationalFlights.map((flight, idx) => {
-                                const pax = flight.pax || 0;
-                                const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
-                                const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-                                return (
-                                  <div key={flight.id || idx} className="bg-white rounded-2xl border border-blue-200 p-4 shadow-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-black text-blue-900 text-base">{flight.flightNumber || '-'}</div>
-                                        <div className="text-sm text-gray-700 font-semibold mt-0.5 truncate">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
-                                      </div>
-                                      <div className="flex gap-2 flex-shrink-0">
-                                        <button onClick={() => editFlight(flight)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
-                                        <button onClick={() => deleteFlight(flight.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
-                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-blue-700 text-base">{pax > 0 ? pax : '-'}</span></div>
-                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{flight.departureTime || '-'}</span></div>
-                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{flight.arrivalTime || '-'}</span></div>
-                                      {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-blue-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-blue-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                        <div className="space-y-6">
+                          {/* KELISH */}
+                          {kelishFlights.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">✈️</span>
+                                  <span className="font-black text-emerald-700 text-base uppercase tracking-wide">Kelish (Arrival)</span>
+                                </div>
+                                <span className="text-sm font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                                  Jami: {kelishFlights.reduce((s, f) => s + (f.pax || 0), 0)} PAX
+                                </span>
+                              </div>
+                              {/* Mobile */}
+                              <div className="space-y-3 md:hidden">{renderFlightMobileCards(kelishFlights)}</div>
+                              {/* Desktop */}
+                              <div className="overflow-x-auto hidden md:block rounded-xl overflow-hidden border border-emerald-200">
+                                <table className="w-full border-collapse">
+                                  {tableHead}
+                                  <tbody>{renderFlightRows(kelishFlights)}</tbody>
+                                  <tfoot>
+                                    <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+                                      <td colSpan={5} className="px-4 py-2 text-sm font-bold text-emerald-700">Jami keluvchilar</td>
+                                      <td className="px-4 py-2 text-center font-black text-emerald-700 text-base">{kelishFlights.reduce((s, f) => s + (f.pax || 0), 0)}</td>
+                                      <td colSpan={3}></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
                             </div>
-                            {/* Desktop table */}
-                            <div className="overflow-x-auto hidden md:block">
-                              <table className="w-full border-collapse">
-                                <thead>
-                                  <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                                    <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
-                                    <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
-                                    <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                                    <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
-                                    <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
-                                    <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
-                                    <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
-                                    <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
-                                    <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {internationalFlights.map((flight, idx) => {
-                                    const pax = flight.pax || 0;
-                                    const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
-                                    const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-                                    const rawDetails = flight.paxDetails ? (() => { try { return JSON.parse(flight.paxDetails); } catch { return []; } })() : [];
-                                    // Support both flat string array (new) and old {pnr,names[]} format
-                                    const nameList = rawDetails.length === 0 ? [] : (typeof rawDetails[0] === 'string' ? rawDetails : rawDetails.flatMap(d => Array.isArray(d.names) ? d.names.flatMap(n => n.split(' | ')) : []));
-                                    const displayPax = nameList.length > pax ? nameList.length : pax;
-                                    const isExpanded = expandedFlightIds.has(flight.id);
-                                    const toggleExpand = () => setExpandedFlightIds(prev => { const s = new Set(prev); s.has(flight.id) ? s.delete(flight.id) : s.add(flight.id); return s; });
-                                    return (
-                                      <React.Fragment key={flight.id || idx}>
-                                        <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                          <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
-                                          <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
-                                          <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                          <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                          <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                          <td className="px-4 py-3 text-center">
-                                            <button onClick={toggleExpand} className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 transition-colors" title="Yo'lovchilarni ko'rish">
-                                              <span>{displayPax > 0 ? displayPax : '-'}</span>
-                                              {nameList.length > 0 && <span className="text-xs">{isExpanded ? '▲' : '▼'}</span>}
-                                            </button>
-                                          </td>
-                                          <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                          <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                          <td className="px-4 py-3">
-                                            <div className="flex items-center justify-center gap-2">
-                                              <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-                                              <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                        {isExpanded && nameList.length > 0 && (
-                                          <tr className="bg-blue-50 border-b border-blue-200">
-                                            <td colSpan={9} className="px-6 py-3">
-                                              <div className="text-xs font-semibold text-blue-700 mb-2">Yo'lovchilar:</div>
-                                              <div className="space-y-1">
-                                                {nameList.map((name, ni) => (
-                                                  <div key={ni} className="flex items-center gap-2 text-xs">
-                                                    <span className="text-gray-400 font-mono w-5 text-right flex-shrink-0">{ni + 1}.</span>
-                                                    <span className="text-gray-800">{name}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        )}
-                                      </React.Fragment>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
+                          )}
+
+                          {/* KETISH */}
+                          {ketishFlights.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">✈️</span>
+                                  <span className="font-black text-orange-700 text-base uppercase tracking-wide">Ketish (Departure)</span>
+                                </div>
+                                <span className="text-sm font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">
+                                  Jami: {ketishFlights.reduce((s, f) => s + (f.pax || 0), 0)} PAX
+                                </span>
+                              </div>
+                              {/* Mobile */}
+                              <div className="space-y-3 md:hidden">{renderFlightMobileCards(ketishFlights)}</div>
+                              {/* Desktop */}
+                              <div className="overflow-x-auto hidden md:block rounded-xl overflow-hidden border border-orange-200">
+                                <table className="w-full border-collapse">
+                                  {tableHead}
+                                  <tbody>{renderFlightRows(ketishFlights)}</tbody>
+                                  <tfoot>
+                                    <tr className="bg-orange-50 border-t-2 border-orange-200">
+                                      <td colSpan={5} className="px-4 py-2 text-sm font-bold text-orange-700">Jami ketuvchilar</td>
+                                      <td className="px-4 py-2 text-center font-black text-orange-700 text-base">{ketishFlights.reduce((s, f) => s + (f.pax || 0), 0)}</td>
+                                      <td colSpan={3}></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
                             </div>
-                          </>
-                        )}
+                          )}
+                        </div>
                       </div>
                     );
                   })()}
