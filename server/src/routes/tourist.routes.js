@@ -7179,7 +7179,7 @@ router.get('/:bookingId/shou-request-preview', authenticatePreview, async (req, 
     <tr>
       <td style="width:55%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
       <td style="width:15%;text-align:center"><span class="sig-line"></span></td>
-      <td style="width:30%;text-align:right"><strong>Одилова М.У.</strong></td>
+      <td style="width:30%;text-align:right"><strong>Милиев С.</strong></td>
     </tr>
   </table>
 </body>
