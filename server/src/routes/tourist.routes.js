@@ -7076,13 +7076,18 @@ router.get('/:bookingId/shou-request-preview', authenticatePreview, async (req, 
     } catch (_) {}
 
     // Helper: get show date from routes
+    // Find the first route in the show's city (sorted by sortOrder) → show is next day
     const getShowDate = (show) => {
-      const city = (show.city || '').toLowerCase();
+      const showCity = (show.city || '').toLowerCase();
+      if (!showCity) return null;
+
+      const isBukhara = showCity.includes('bukhara') || showCity.includes('buxoro') || showCity.includes('бухар');
+      if (!isBukhara) return null;
+
+      // Use route.city field — first Bukhara route = arrival day; show is the next day
       const arrRoute = routes.find(r => {
-        const rn = (r.routeName || '').toLowerCase();
-        if (city.includes('bukhara') || city.includes('buxoro') || city.includes('бухар'))
-          return (rn.includes('asraf') || rn.includes('samarkand')) && (rn.includes('bukhara') || rn.includes('buxoro'));
-        return false;
+        const rc = (r.city || '').toLowerCase();
+        return rc.includes('bukhara') || rc.includes('buxoro') || rc.includes('бухар');
       });
       if (arrRoute?.date) {
         const d = new Date(arrRoute.date);

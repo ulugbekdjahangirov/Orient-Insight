@@ -13265,26 +13265,19 @@ License №T-0084-08 from 2021-04-26`;
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
             const pax = tourists?.length || 0;
 
-            // Calculate show date: arrival route in that city + 1 day
+            // Calculate show date: first route in that city (by sortOrder) + 1 day
             const getShowDate = (show) => {
               if (!routes || routes.length === 0) return null;
               const city = (show.city || '').toLowerCase();
-              // Find the arrival route into the city, then add 1 day
-              const arrivalRoute = routes.find(r => {
-                const rn = (r.routeName || '').toLowerCase();
-                if (city.includes('bukhara') || city.includes('buxoro')) {
-                  return (rn.includes('asraf') || rn.includes('samarkand')) && (rn.includes('bukhara') || rn.includes('buxoro'));
-                }
-                if (city.includes('samarkand') || city.includes('samarqand')) {
-                  return rn.includes('train station') || (rn.includes('asraf') && rn.includes('samarkand'));
-                }
-                if (city.includes('khiva') || city.includes('xiva')) {
-                  return rn.includes('bukhara') && (rn.includes('khiva') || rn.includes('xiva'));
-                }
-                return false;
+              const isBukhara = city.includes('bukhara') || city.includes('buxoro');
+              if (!isBukhara) return null;
+              // Use route.city field — first Bukhara route = arrival day; show is next day
+              const arrRoute = routes.find(r => {
+                const rc = (r.city || '').toLowerCase();
+                return rc.includes('bukhara') || rc.includes('buxoro');
               });
-              if (arrivalRoute?.date) {
-                const d = new Date(arrivalRoute.date);
+              if (arrRoute?.date) {
+                const d = new Date(arrRoute.date);
                 d.setDate(d.getDate() + 1);
                 return d;
               }
