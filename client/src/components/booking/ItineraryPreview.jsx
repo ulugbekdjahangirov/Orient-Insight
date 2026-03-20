@@ -438,9 +438,40 @@ export default function ItineraryPreview({ bookingId, booking }) {
   const translateRouteToUzbek = (routeName) => {
     if (!routeName) return '';
 
-    // Route names are now stored in Uzbek in the database
-    // Just return them as-is (no translation needed)
-    return routeName;
+    const map = {
+      // ER routes
+      'Tashkent City Tour':            "Toshkent shahri bo'ylab ekskursiya",
+      'Tashkent - Chimgan - Tashkent': 'Toshkent - Chimgan - Toshkent',
+      'Train Station Drop-off':        "Temir yo'l vokzaliga kuzatish",
+      'Train Station Pickup':          "Temir yo'l vokzalidan kutib olish",
+      'Samarkand City Tour':           "Samarqand shahri bo'ylab ekskursiya",
+      'Samarkand - Asraf':             'Samarqanddan Asrafga',
+      'Asraf - Bukhara':               'Asrafdan Buxoroga',
+      'Bukhara City Tour':             "Buxoro shahri bo'ylab ekskursiya",
+      'Bukhara - Khiva':               'Buxorodan Xivaga',
+      'Khiva - Urgench':               'Xivadan Urganchga',
+      'Airport Pickup':                'Aeroportdan kutib olish',
+      'Airport Drop-off':              'Aeroportga kuzatish',
+      'Khiva - Shovot':                "Xivadan Sho'votga",
+      // CO routes
+      'Qoqon - Fergana':               "Qo'qondan Farg'onaga",
+      'Fergana City Tour':             "Farg'ona shahri bo'ylab ekskursiya",
+      'Fergana - Tashkent':            "Farg'onadan Toshkentga",
+      // KAS routes
+      'Dostlik - Fergana':             "Do'stlik - Farg'ona",
+      'Fergana - Samarkand':           "Farg'onadan Samarqandga",
+      'Samarkand - Bukhara':           'Samarqanddan Buxoroga',
+      'Bukhara - Urgench':             'Buxorodan Urganchga',
+      'Urgench - Tashkent':            'Urganchdan Toshkentga',
+      // ZA routes
+      'Olot - Bukhara':                'Olotdan Buxoroga',
+      'Bukhara - Samarkand':           'Buxorodan Samarqandga',
+      'Samarkand - Jartepa':           'Samarqanddan Jartepa chegarasiga',
+      'Oybek - Tashkent':              'Oybek chegarasidan Toshkentga',
+      'Tashkent - Chernyayevka':       "Toshkentdan Chernyayevka chegarasiga",
+    };
+
+    return map[routeName] || routeName;
   };
 
   // Transliteration function for Cyrillic to Latin
@@ -1365,9 +1396,20 @@ export default function ItineraryPreview({ bookingId, booking }) {
       } else if (rn.includes('shovot')) {
         time = '08:00';
       } else if (rn.includes('airport') && (rn.includes('pickup') || rn.includes('pick up'))) {
-        time = domesticFlight?.arrivalTime || null;
+        // Match by route date → find any flight arriving on that date
+        const routeDate = route.date?.split('T')[0];
+        const matchFlight = routeDate
+          ? flightsList.find(f => f.date?.split('T')[0] === routeDate && f.arrivalTime)
+          : null;
+        time = matchFlight?.arrivalTime || domesticFlight?.arrivalTime || null;
       } else if (rn.includes('airport') && rn.includes('drop')) {
-        time = intlDepartureFlight?.departureTime ? subHours(intlDepartureFlight.departureTime, 3) : null;
+        // Match by route date → find departing flight on that date
+        const routeDate = route.date?.split('T')[0];
+        const matchFlight = routeDate
+          ? flightsList.find(f => f.date?.split('T')[0] === routeDate && f.departureTime)
+          : null;
+        const depTime = matchFlight?.departureTime || intlDepartureFlight?.departureTime;
+        time = depTime ? subHours(depTime, 3) : null;
       } else {
         // All other rows (Bukhara, Samarkand middle days, ZA routes, etc.)
         time = '08:30';
