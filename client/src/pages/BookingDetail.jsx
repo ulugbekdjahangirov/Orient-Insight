@@ -9173,6 +9173,22 @@ export default function BookingDetail() {
   };
 
 
+  // Send Shou PDF via Telegram (Restaurant bot)
+  const [sendingShouTg, setSendingShouTg] = useState(false);
+  const sendShouTelegram = async () => {
+    try {
+      setSendingShouTg(true);
+      toast.loading('Telegram ga yuborilmoqda...', { id: 'shou-tg' });
+      await telegramApi.sendShouTelegram(id);
+      toast.success('Telegram ga yuborildi!', { id: 'shou-tg' });
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message;
+      toast.error('Telegram xatosi: ' + msg, { id: 'shou-tg' });
+    } finally {
+      setSendingShouTg(false);
+    }
+  };
+
   // Download Folklore Show PDF (Заявка на концерт в медресе Нодир Девонбеги)
   const downloadShouPdf = async () => {
     try {
@@ -13307,13 +13323,24 @@ License №T-0084-08 from 2021-04-26`;
                     Shou (Shows)
                   </h3>
                   {showsData.length > 0 && (
-                    <button
-                      onClick={downloadShouPdf}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white text-sm font-bold rounded-xl shadow hover:shadow-md transition-all"
-                    >
-                      <FileDown className="w-4 h-4" />
-                      PDF
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={downloadShouPdf}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white text-sm font-bold rounded-xl shadow hover:shadow-md transition-all"
+                      >
+                        <FileDown className="w-4 h-4" />
+                        PDF
+                      </button>
+                      <button
+                        onClick={sendShouTelegram}
+                        disabled={sendingShouTg}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white text-sm font-bold rounded-xl shadow hover:shadow-md transition-all disabled:opacity-50"
+                        title="Telegram ga yuborish (Restaurant bot)"
+                      >
+                        {sendingShouTg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        TG
+                      </button>
+                    </div>
                   )}
                 </div>
 

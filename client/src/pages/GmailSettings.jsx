@@ -17,6 +17,8 @@ export default function GmailSettings() {
   const [savingBotAdmins, setSavingBotAdmins] = useState(false);
   const [ausgabenChatIds, setAusgabenChatIds] = useState('');
   const [savingAusgaben, setSavingAusgaben] = useState(false);
+  const [shouChatId, setShouChatId] = useState('');
+  const [savingShou, setSavingShou] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -26,6 +28,7 @@ export default function GmailSettings() {
     loadMealSettings();
     loadBotAdminIds();
     loadAusgabenSettings();
+    loadShouSettings();
   }, []);
 
   const checkAuthCallback = () => {
@@ -206,6 +209,25 @@ export default function GmailSettings() {
       const res = await ausgabenApi.getSettings();
       setAusgabenChatIds(res.data.chatIds || '');
     } catch (e) {}
+  };
+
+  const loadShouSettings = async () => {
+    try {
+      const res = await telegramApi.getShouSettings();
+      setShouChatId(res.data.chatId || '');
+    } catch (e) {}
+  };
+
+  const handleSaveShou = async () => {
+    setSavingShou(true);
+    try {
+      await telegramApi.saveShouSettings(shouChatId);
+      setMessage({ type: 'success', text: 'Shou Telegram sozlamalari saqlandi' });
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Saqlashda xatolik' });
+    } finally {
+      setSavingShou(false);
+    }
   };
 
   const handleSaveAusgaben = async () => {
@@ -461,6 +483,31 @@ export default function GmailSettings() {
         >
           {savingMeal ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
+      </div>
+
+      {/* Shou Telegram Settings */}
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
+        <h2 className="text-lg font-semibold mb-1">🎭 Shou (Folklor) Telegram sozlamalari</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Folklor shou zaявkasi yuboriluvchi Telegram chat ID (Restaurant boti orqali yuboriladi).
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <label className="sm:w-48 text-sm font-semibold text-gray-700 flex-shrink-0">Nadir Divan-Begi Chat ID</label>
+          <input
+            type="text"
+            value={shouChatId}
+            onChange={e => setShouChatId(e.target.value)}
+            placeholder="-1001234567890"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-pink-500"
+          />
+          <button
+            onClick={handleSaveShou}
+            disabled={savingShou}
+            className="px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 disabled:opacity-50 text-sm whitespace-nowrap"
+          >
+            {savingShou ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
+        </div>
       </div>
 
       {/* Bot Admin Chat IDs */}

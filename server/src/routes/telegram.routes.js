@@ -7473,4 +7473,91 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
   }
 });
 
+// ============================================
+// SHOU (FOLKLORE SHOW) TELEGRAM SEND
+// ============================================
+
+// GET /api/telegram/shou-settings
+router.get('/shou-settings', authenticate, async (req, res) => {
+  try {
+    const s = await prisma.systemSetting.findUnique({ where: { key: 'SHOU_TELEGRAM_CHAT_ID' } });
+    res.json({ chatId: s?.value || '' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/telegram/shou-settings
+router.put('/shou-settings', authenticate, async (req, res) => {
+  try {
+    const { chatId } = req.body;
+    await prisma.systemSetting.upsert({
+      where: { key: 'SHOU_TELEGRAM_CHAT_ID' },
+      update: { value: chatId },
+      create: { key: 'SHOU_TELEGRAM_CHAT_ID', value: chatId }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/telegram/send-shou/:bookingId
+router.post('/send-shou/:bookingId', authenticate, async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId);
+
+    // 1. Get chat ID
+    const chatIdSetting = await prisma.systemSetting.findUnique({ where: { key: 'SHOU_TELEGRAM_CHAT_ID' } });
+    const chatId = chatIdSetting?.value;
+    if (!chatId) return res.status(400).json({ error: "Shou Telegram chat ID sozlanmagan (Settings → Telegram)" });
+
+    // 2. Booking info for caption
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const touristCount = await prisma.tourist.count({ where: { bookingId } });
+
+    // 3. Generate PDF via Puppeteer (shou-request-preview)
+    const browser = await puppeteer.launch({
+      env: { ...process.env, HOME: '/tmp' },
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+    const page = await browser.newPage();
+    let pdfBuffer;
+    try {
+      await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+      const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/shou-request-preview`;
+      await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+      pdfBuffer = Buffer.from(pdfUint8);
+    } finally {
+      await page.close();
+      await browser.close();
+    }
+
+    // 4. Send via Restaurant bot
+    const bookingNum = booking.bookingNumber || String(bookingId);
+    const caption = `🎭 *ЗАЯВКА ${bookingNum}*\nФольклорное шоу — медресе Нодир Девонбеги\n👥 PAX: ${touristCount}`;
+    const filename = `Shou-Zayvka-${bookingNum}.pdf`;
+
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
+    form.append('caption', caption);
+    form.append('parse_mode', 'Markdown');
+
+    await axios.post(`${RESTAURANT_API()}/sendDocument`, form, { headers: form.getHeaders() });
+
+    res.json({ success: true, sentTo: chatId });
+  } catch (err) {
+    console.error('send-shou error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
 module.exports = router;
