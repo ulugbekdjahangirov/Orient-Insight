@@ -7013,4 +7013,207 @@ router.post('/:bookingId/send-storno-telegram/:hotelId', authenticate, async (re
   }
 });
 
+// ============================================
+// SHOU (FOLKLORE SHOW) REQUEST PDF
+// ============================================
+
+// GET /api/bookings/:bookingId/shou-request-preview - HTML preview for Puppeteer
+router.get('/:bookingId/shou-request-preview', authenticatePreview, async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId);
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const tourTypeCode = booking.tourType?.code?.toUpperCase() || 'ER';
+    const bookingYear = booking.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+
+    // Tourist count
+    const touristCount = await prisma.tourist.count({ where: { bookingId } });
+
+    // Routes - to find show date (Asraf-Bukhara arrival date + 1)
+    const routes = await prisma.route.findMany({
+      where: { bookingId },
+      orderBy: { sortOrder: 'asc' }
+    });
+
+    // Guide info from mainGuideData or booking.guide
+    let guideName = '', guidePhone = '';
+    if (booking.mainGuideData) {
+      try {
+        const mgd = typeof booking.mainGuideData === 'string' ? JSON.parse(booking.mainGuideData) : booking.mainGuideData;
+        if (mgd && mgd.guide) {
+          guideName = typeof mgd.guide === 'string' ? mgd.guide : (mgd.guide.name || '');
+          guidePhone = typeof mgd.guide === 'object' ? (mgd.guide.phone || '') : '';
+        }
+      } catch (_) {}
+    }
+    if (!guideName) {
+      const guideRel = await prisma.booking.findUnique({ where: { id: bookingId }, include: { guide: true } });
+      guideName = guideRel?.guide?.name || '';
+      guidePhone = guideRel?.guide?.phone || '';
+    }
+
+    // OPEX shows config
+    let showsItems = [];
+    try {
+      const opexCfg = await prisma.opexConfig.findUnique({
+        where: { tourType_category_year: { tourType: tourTypeCode, category: 'shows', year: bookingYear } }
+      });
+      if (opexCfg) showsItems = JSON.parse(opexCfg.itemsJson) || [];
+    } catch (_) {}
+
+    // Logo as base64
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoDataUrl = '';
+    try {
+      if (fs.existsSync(logoPath)) {
+        logoDataUrl = `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
+      }
+    } catch (_) {}
+
+    // Helper: get show date from routes
+    const getShowDate = (show) => {
+      const city = (show.city || '').toLowerCase();
+      const arrRoute = routes.find(r => {
+        const rn = (r.routeName || '').toLowerCase();
+        if (city.includes('bukhara') || city.includes('buxoro') || city.includes('бухар'))
+          return (rn.includes('asraf') || rn.includes('samarkand')) && (rn.includes('bukhara') || rn.includes('buxoro'));
+        return false;
+      });
+      if (arrRoute?.date) {
+        const d = new Date(arrRoute.date);
+        d.setDate(d.getDate() + 1);
+        return d;
+      }
+      return null;
+    };
+
+    const fmtDate = (d) => {
+      if (!d) return '-';
+      return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    };
+
+    const today = new Date();
+    const todayStr = fmtDate(today);
+    const bookingNumber = booking.bookingNumber || 'N/A';
+
+    // Build table rows — one row per show
+    let tableRows = '';
+    showsItems.forEach((show, idx) => {
+      const showDate = fmtDate(getShowDate(show));
+      tableRows += `<tr>
+        <td>${idx + 1}</td>
+        <td>${bookingNumber}</td>
+        <td>Германия</td>
+        <td>${touristCount}</td>
+        <td>${showDate}</td>
+        <td>${guideName || '-'}</td>
+        <td>${guidePhone || '-'}</td>
+      </tr>`;
+    });
+
+    if (!tableRows) {
+      tableRows = `<tr><td colspan="7" style="text-align:center;font-style:italic;">Нет данных о шоу</td></tr>`;
+    }
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ЗАЯВКА ${bookingNumber}</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 18mm 15mm 18mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 10pt; line-height: 1.4; color: #000; }
+    .logo-block { text-align: center; margin-bottom: 10px; }
+    .logo-block img { width: 150px; height: auto; }
+    .addr-block { text-align: center; font-size: 9.5pt; margin-bottom: 14px; border-bottom: 1px solid #000; padding-bottom: 10px; }
+    .date-line { font-size: 9.5pt; margin-bottom: 10px; }
+    .title { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 12px 0 10px; }
+    .intro { text-align: justify; font-size: 9.5pt; margin-bottom: 12px; }
+    .show-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 9pt; }
+    .show-table th, .show-table td { border: 1px solid #000; padding: 5px 6px; text-align: center; }
+    .show-table th { background: #f0f0f0; font-weight: bold; }
+    .footer { font-size: 10pt; font-weight: bold; margin-top: 16px; margin-bottom: 24px; }
+    .sig-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 12px; }
+    .sig-table td { border: none; padding: 3px 0; vertical-align: bottom; }
+    .sig-line { border-bottom: 1px solid #000; display: inline-block; width: 80px; }
+  </style>
+</head>
+<body>
+  <div class="logo-block">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F">ORIENT INSIGHT</div>'}
+  </div>
+  <div class="addr-block">
+    <strong>Республика Узбекистан,</strong><br>
+    г.Самарканд, Шота Руставели, дом 45<br>
+    Тел/fax.: +998 933484208, +998 97 9282814<br>
+    E-Mail: orientinsightreisen@gmail.com &nbsp;|&nbsp; Website: orient-insight.uz
+  </div>
+  <div class="date-line"><strong>Дата:</strong> ${todayStr}</div>
+  <div class="title">ЗАЯВКА ${bookingNumber}</div>
+  <div class="intro">
+    ООО <strong>«ORIENT INSIGHT»</strong> приветствует Вас, и просит забронировать места на концерт
+    в медресе «Нодир Девонбеги» в следующем порядке:
+  </div>
+  <table class="show-table">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Группа</th>
+        <th>Страна</th>
+        <th>Кол. Чел</th>
+        <th>Дата</th>
+        <th>Гид</th>
+        <th>Номер телефона гида</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">Оплату через перечисления.</div>
+  <table class="sig-table">
+    <tr>
+      <td style="width:55%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+      <td style="width:15%;text-align:center"><span class="sig-line"></span></td>
+      <td style="width:30%;text-align:right"><strong>Одилова М.У.</strong></td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('Shou preview error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/bookings/:bookingId/shou-request-pdf - Generate PDF via Puppeteer
+router.get('/:bookingId/shou-request-pdf', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const browser = await getPuppeteerBrowser();
+    const page = await browser.newPage();
+    try {
+      await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+      const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/shou-request-preview`;
+      await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Shou-Zayvka-${bookingId}.pdf"`);
+      res.send(Buffer.from(pdfUint8));
+    } finally {
+      await page.close();
+    }
+  } catch (err) {
+    console.error('Shou PDF error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

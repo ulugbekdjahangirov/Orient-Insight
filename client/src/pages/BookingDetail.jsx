@@ -9173,6 +9173,32 @@ export default function BookingDetail() {
   };
 
 
+  // Download Folklore Show PDF (Заявка на концерт в медресе Нодир Девонбеги)
+  const downloadShouPdf = async () => {
+    try {
+      toast.loading('PDF tayyorlanmoqda...', { id: 'shou-pdf' });
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/bookings/${id}/shou-request-pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Server error' }));
+        throw new Error(err.error || 'PDF generation failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Shou-Zayvka-${booking?.bookingNumber || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF yuklandi!', { id: 'shou-pdf' });
+    } catch (err) {
+      console.error('Shou PDF error:', err);
+      toast.error('PDF xatosi: ' + err.message, { id: 'shou-pdf' });
+    }
+  };
+
   // Compute Überweisung total in USD for Dalolatnoma auto-fill (must be before any early returns)
   const uberweisungTotalUSD = useMemo(() => {
     const pax = tourists?.length || 0;
@@ -13221,6 +13247,37 @@ License №T-0084-08 from 2021-04-26`;
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
             const pax = tourists?.length || 0;
 
+            // Calculate show date: arrival route in that city + 1 day
+            const getShowDate = (show) => {
+              if (!routes || routes.length === 0) return null;
+              const city = (show.city || '').toLowerCase();
+              // Find the arrival route into the city, then add 1 day
+              const arrivalRoute = routes.find(r => {
+                const rn = (r.routeName || '').toLowerCase();
+                if (city.includes('bukhara') || city.includes('buxoro')) {
+                  return (rn.includes('asraf') || rn.includes('samarkand')) && (rn.includes('bukhara') || rn.includes('buxoro'));
+                }
+                if (city.includes('samarkand') || city.includes('samarqand')) {
+                  return rn.includes('train station') || (rn.includes('asraf') && rn.includes('samarkand'));
+                }
+                if (city.includes('khiva') || city.includes('xiva')) {
+                  return rn.includes('bukhara') && (rn.includes('khiva') || rn.includes('xiva'));
+                }
+                return false;
+              });
+              if (arrivalRoute?.date) {
+                const d = new Date(arrivalRoute.date);
+                d.setDate(d.getDate() + 1);
+                return d;
+              }
+              return null;
+            };
+
+            const fmtDate = (d) => {
+              if (!d) return '-';
+              return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+            };
+
             // Calculate total
             const grandTotal = showsData.reduce((sum, show) => {
               // Get price from Opex (can be string or number)
@@ -13233,10 +13290,21 @@ License №T-0084-08 from 2021-04-26`;
             return (
               <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-pink-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
-                <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
-                  <span className="text-2xl md:text-3xl">🎭</span>
-                  Shou (Shows)
-                </h3>
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
+                    <span className="text-2xl md:text-3xl">🎭</span>
+                    Shou (Shows)
+                  </h3>
+                  {showsData.length > 0 && (
+                    <button
+                      onClick={downloadShouPdf}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white text-sm font-bold rounded-xl shadow hover:shadow-md transition-all"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      PDF
+                    </button>
+                  )}
+                </div>
 
                 {showsData.length > 0 ? (
                   <>
@@ -13275,6 +13343,7 @@ License №T-0084-08 from 2021-04-26`;
                           <tr className="bg-gradient-to-r from-pink-600 to-red-600 border-b-2 border-pink-700">
                             <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">#</th>
                             <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">CITY</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">DATE</th>
                             <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">SERVICE</th>
                             <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-pink-400">PRICE (UZS)</th>
                             <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">PAX</th>
@@ -13287,6 +13356,7 @@ License №T-0084-08 from 2021-04-26`;
                             const priceStr = rawPrice.toString().replace(/\s/g, '');
                             const pricePerPerson = parseFloat(priceStr) || 0;
                             const total = pricePerPerson * pax;
+                            const showDate = getShowDate(show);
                             return (
                               <tr key={index} className="border-b border-gray-200 hover:bg-pink-50 transition-colors">
                                 <td className="px-4 py-3 text-center border-r border-gray-200">
@@ -13299,6 +13369,9 @@ License №T-0084-08 from 2021-04-26`;
                                     <div className="w-2 h-2 rounded-full bg-pink-400"></div>
                                     <span className="font-medium text-gray-900">{show.city || '-'}</span>
                                   </div>
+                                </td>
+                                <td className="px-4 py-3 border-r border-gray-200 text-sm font-medium text-gray-700">
+                                  {fmtDate(showDate)}
                                 </td>
                                 <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
                                   {show.name || show.service || '-'}
@@ -13320,7 +13393,7 @@ License №T-0084-08 from 2021-04-26`;
                         </tbody>
                         <tfoot>
                           <tr className="bg-gradient-to-r from-pink-100 to-rose-200 border-t-2 border-pink-300">
-                            <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                            <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
                               Grand Total:
                             </td>
                             <td className="px-4 py-4 text-right font-bold text-pink-700 text-xl">
