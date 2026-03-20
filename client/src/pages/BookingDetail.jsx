@@ -9186,13 +9186,31 @@ export default function BookingDetail() {
         throw new Error(err.error || 'PDF generation failed');
       }
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Shou-Zayvka-${booking?.bookingNumber || id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('PDF yuklandi!', { id: 'shou-pdf' });
+      const bookingNum = booking?.bookingNumber || String(id);
+      const tourTypeCode = booking?.tourType?.code?.toUpperCase() || 'ER';
+      const filename = `Shou-Zayvka-${bookingNum}.pdf`;
+
+      // Try to save to folder (ER-01/Shou/)
+      const folderResult = await savePdfToFolder({
+        tourType: tourTypeCode,
+        bookingNumber: bookingNum,
+        category: 'shou',
+        filename,
+        pdfBlob: blob,
+      });
+
+      if (folderResult.success) {
+        toast.success(`Saqlandi: ${folderResult.path}`, { id: 'shou-pdf' });
+      } else {
+        // Fallback: browser download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('PDF yuklandi!', { id: 'shou-pdf' });
+      }
     } catch (err) {
       console.error('Shou PDF error:', err);
       toast.error('PDF xatosi: ' + err.message, { id: 'shou-pdf' });

@@ -14,6 +14,7 @@ export const PDF_CATEGORIES = {
   transport:   'Transport',     // Marshrut varaqasi
   ausgaben:    'Ausgaben',      // Cost / Ausgaben
   eintritt:    'Voucher',       // Eintritt vouchers
+  shou:        'Shou',          // Folklore show request PDF
 };
 
 function openDatabase() {
